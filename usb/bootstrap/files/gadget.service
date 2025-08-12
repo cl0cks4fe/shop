@@ -6,7 +6,6 @@ Wants=systemd-udevd.service
 [Service]
 Type=oneshot
 ExecStartPre=modprobe -r g_mass_storage
-RequiresMountsFor=/gadget.img
 ExecStart=modprobe g_mass_storage file=/gadget.img removable=1 stall=0
 RemainAfterExit=yes
 
