@@ -1,0 +1,12 @@
+[Unit]
+Description=Gadget Server
+After=network.target gadget.service
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/bin/gadget/server
+ExecStart=/usr/local/bin/gadget/server/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

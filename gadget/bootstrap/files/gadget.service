@@ -1,5 +1,5 @@
 [Unit]
-Description=USB Gadget
+Description=Gadget
 After=systemd-udevd.service
 Wants=systemd-udevd.service
 
