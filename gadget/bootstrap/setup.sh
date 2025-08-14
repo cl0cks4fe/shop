@@ -20,7 +20,7 @@ echo "usb image created"
 
 # Install systemd service
 echo "installing systemd service"
-GADGET_URL="https://raw.githubusercontent.com/cl0cks4fe/shop/main/usb/bootstrap/files/gadget.service"
+GADGET_URL="https://raw.githubusercontent.com/cl0cks4fe/shop/refs/heads/main/gadget/bootstrap/files/gadget.service"
 
 # Download the service file with error checking
 if ! sudo curl -fsSL "$GADGET_URL" -o /etc/systemd/system/gadget.service; then
