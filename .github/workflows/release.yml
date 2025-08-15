@@ -12,23 +12,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Build gadget bootstrap ZIP
         run: |
           cd gadget
           mkdir gadget-bootstrap-${{ github.ref_name }}
           cp -r bootstrap/* gadget-bootstrap-${{ github.ref_name }}
-          zip -r gadget-bootstrap-${{ github.ref_name }}.zip gadget-bootstrap-${{ github.ref_name }}
+          zip -r gadget-bootstrap.zip gadget-bootstrap-${{ github.ref_name }}
       - name: Build gadget app ZIP
         run: |
           cd gadget
           mkdir gadget-server-${{ github.ref_name }}
           cp -r server/* gadget-server-${{ github.ref_name }}
-          zip -r gadget-server-${{ github.ref_name }}.zip gadget-server-${{ github.ref_name }}
-
+          zip -r gadget-server.zip gadget-server-${{ github.ref_name }}
       - name: Upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            gadget/gadget-bootstrap-${{ github.ref_name }}.zip
-            gadget/gadget-server-${{ github.ref_name }}.zip
+            gadget/gadget-bootstrap.zip
+            gadget/gadget-server.zip
