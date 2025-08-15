@@ -3,6 +3,12 @@ set -euo pipefail
 
 echo "🚀 Starting gadget application installation..."
 
+echo "🏷️  Device Configuration..."
+if [ ! -f /etc/gadget-device-name ]; then
+    read -p "   Enter name: " -r DEVICE_NAME
+    echo "$DEVICE_NAME" | sudo tee /etc/gadget-device-name > /dev/null
+fi
+echo "   ✓ Device is named: $(cat /etc/gadget-device-name)"
 
 APP_DIR="/usr/local/bin/gadget/server"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

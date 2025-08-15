@@ -6,6 +6,14 @@ app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'upload')
 ALLOWED_EXTENSIONS = {'prg', 'nc', 'txt', 'p-1'}
 
+def get_device_name():
+    try:
+        with open('/etc/gadget-device-name', 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return 'unknown'
+DEVICE_NAME = get_device_name()
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -31,7 +39,7 @@ def upload_file():
             return 'Update failed', 500
 
     success = request.args.get('success')
-    return render_template('index.html', success=success)
+    return render_template('index.html', success=success, device_name=DEVICE_NAME)
 
 if __name__ == '__main__':
     # Create upload directory if it doesn't exist
