@@ -1,9 +1,17 @@
 # shop
 
-## usb
+## gadget
 
-Set up Raspberry Pi Zero's as OTG Gadgets for loading files onto machines.
+### bootstrap
 
-## usb-control
+to install latest:
+```
+wget https://github.com/cl0cks4fe/shop/releases/latest/download/gadget-bootstrap.zip
+```
 
-Monitoring and orchestration of the per-machine usb devices.
+### server
+
+to install latest:
+```
+wget https://github.com/cl0cks4fe/shop/releases/latest/download/gadget-server.zip
+```
