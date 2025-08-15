@@ -25,7 +25,7 @@ def upload_file():
 
         # Call your bash script to update USB gadget
         try:
-            subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')'], check=True)
+            subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')], check=True)
             return redirect(url_for('upload_file', success=True))
         except subprocess.CalledProcessError:
             return 'Update failed', 500

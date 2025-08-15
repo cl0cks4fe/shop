@@ -1,0 +1,28 @@
+name: Create Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build gadget bootstrap ZIP
+        run: |
+          cd gadget/bootstrap
+          zip -r ../../gadget-bootstrap-${{ github.ref_name }}.zip .
+
+      - name: Build gadget app ZIP
+        run: |
+          cd gadget/server
+          zip -r ../../gadget-app-${{ github.ref_name }}.zip install.sh .
+
+      - name: Upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            gadget-bootstrap-${{ github.ref_name }}.zip
+            gadget-app-${{ github.ref_name }}.zip
