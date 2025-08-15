@@ -15,17 +15,20 @@ jobs:
 
       - name: Build gadget bootstrap ZIP
         run: |
-          cd gadget/bootstrap
-          zip -r ../../gadget-bootstrap-${{ github.ref_name }}.zip .
-
+          cd gadget
+          mkdir gadget-bootstrap-${{ github.ref_name }}
+          cp -r bootstrap/* gadget-bootstrap-${{ github.ref_name }}
+          zip -r gadget-bootstrap-${{ github.ref_name }}.zip gadget-bootstrap-${{ github.ref_name }}
       - name: Build gadget app ZIP
         run: |
-          cd gadget/server
-          zip -r ../../gadget-app-${{ github.ref_name }}.zip install.sh .
+          cd gadget
+          mkdir gadget-server-${{ github.ref_name }}
+          cp -r server/* gadget-server-${{ github.ref_name }}
+          zip -r gadget-server-${{ github.ref_name }}.zip gadget-server-${{ github.ref_name }}
 
       - name: Upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            gadget-bootstrap-${{ github.ref_name }}.zip
-            gadget-app-${{ github.ref_name }}.zip
+            gadget/gadget-bootstrap-${{ github.ref_name }}.zip
+            gadget/gadget-server-${{ github.ref_name }}.zip
