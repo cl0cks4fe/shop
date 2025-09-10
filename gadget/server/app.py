@@ -1,10 +1,18 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, request
 import os
 import subprocess
+import time
+import threading
+import logging
+import requests
 
 app = Flask(__name__)
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'upload')
-ALLOWED_EXTENSIONS = {'prg', 'nc', 'txt', 'p-1'}
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M')
+
+registered = False
 
 def get_device_name():
     try:
@@ -15,10 +23,14 @@ def get_device_name():
 DEVICE_NAME = get_device_name()
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return True
 
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
+@app.route('/ping', methods=['GET'])
+def ping():
+    return 'ok', 200
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
             return 'No file selected', 400
@@ -27,21 +39,39 @@ def upload_file():
         if file.filename == '' or not allowed_file(file.filename):
             return 'Invalid file type', 400
 
-        # Save the uploaded file
         filepath = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(filepath)
 
-        # Call your bash script to update USB gadget
         try:
             subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')], check=True)
-            return redirect(url_for('upload_file', success=True))
+            return redirect(url_for('upload', success=True))
         except subprocess.CalledProcessError:
             return 'Update failed', 500
 
     success = request.args.get('success')
     return render_template('index.html', success=success, device_name=DEVICE_NAME)
 
+def register():
+    global registered
+    while True:
+        if not registered:
+            logger.info("attempting to register gadget...")
+            url = 'http://192.168.0.118:5000/register'
+
+            try: 
+                response = requests.post(url, json={'id': DEVICE_NAME})
+
+                if response.status_code == 201:
+                    registered = True
+            except:
+                logger.error("attempt to register failed")
+    
+        time.sleep(5)
+
 if __name__ == '__main__':
-    # Create upload directory if it doesn't exist
+    ping_thread = threading.Thread(target=register, daemon=True)
+    ping_thread.start()
+
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=8080, debug=True)
+
