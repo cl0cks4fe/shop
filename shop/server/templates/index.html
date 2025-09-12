@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected Devices</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Devices</h1>
+
+        {% if gadgets %}
+            <div class="device-status">
+                {% for gadget in gadgets %}
+                    <div class="status-box">
+                        <span class="online-dot"></span>&nbsp;&nbsp;<span>{{ gadget.id.upper() }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No devices found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
