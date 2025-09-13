@@ -7,9 +7,9 @@ import logging
 import requests
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'upload')
-DIRECTOR_URL = 'http://192.168.0.118:5000'
+DIRECTOR_URL = 'http://192.168.0.118:3000'
 
-registered = False
+connected = False
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class LogHandler(logging.Handler):
     
     def emit(self, record):
         log_entry = self.format(record)
-        if registered:
+        if connected:
             requests.post(self.url, json={"log": log_entry})
         else:
             print(log_entry)
@@ -32,6 +32,7 @@ def get_device_name():
             return f.read().strip()
     except FileNotFoundError:
         return 'unknown'
+
 DEVICE_NAME = get_device_name()
 
 def allowed_file(filename):
@@ -63,27 +64,15 @@ def upload():
     success = request.args.get('success')
     return render_template('index.html', success=success, device_name=DEVICE_NAME)
 
-def register():
-    global registered
+def ping():
+    global connected
+
     while True:
-        if not registered:
-            logger.info(f"attempting to register ({DIRECTOR_URL})...")
-            try: 
-                response = requests.post(f'{DIRECTOR_URL}/register', json={'id': DEVICE_NAME})
-
-                if response.status_code == 201:
-                    registered = True
-            except:
-                logger.error("attempt to register failed")
-        else:
-            try: 
-                response = requests.post(f'{DIRECTOR_URL}/register', json={'id': DEVICE_NAME})
-
-                if response.status_code != 200:
-                    registered = False
-            except:
-                logger.error("can't reach director")
-    
+        try:
+            response = requests.get(f'{DIRECTOR_URL}/ping', headers={'id': f'{DEVICE_NAME}'})
+            connected = True if response.status_code == 200 else False
+        except:
+            connected = False
         time.sleep(5)
 
 if __name__ == '__main__':
@@ -93,8 +82,8 @@ if __name__ == '__main__':
     logger.addHandler(log_handler)
     logger.setLevel(logging.ERROR)
 
-    register_thread = threading.Thread(target=register, daemon=True)
-    register_thread.start()
+    ping_thread = threading.Thread(target=ping, daemon=True)
+    ping_thread.start()
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=3000)

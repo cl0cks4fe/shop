@@ -8,13 +8,17 @@
 </head>
 <body>
     <div class="container">
-        <h1>Devices</h1>
+        <h1>Status</h1>
 
         {% if gadgets %}
             <div class="device-status">
                 {% for gadget in gadgets %}
                     <div class="status-box">
-                        <span class="online-dot"></span>&nbsp;&nbsp;<span>{{ gadget.id.upper() }}</span>
+                        {% if gadgets[gadget].connected() %}
+                            <span class="online-dot"></span>&nbsp;&nbsp;<span><a href="{{ gadgets[gadget].url }}">{{ gadgets[gadget].id.upper() }}</a></span>
+                        {% else %}
+                            <span class="offline-dot"></span>&nbsp;&nbsp;<span>{{ gadgets[gadget].id.upper() }}</span>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
