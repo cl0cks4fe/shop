@@ -1,2 +1,6 @@
 venv
 *.zip
+send.sh
+instance/
+zip.sh
+__pycache__
