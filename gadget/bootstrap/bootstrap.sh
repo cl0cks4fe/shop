@@ -35,7 +35,7 @@ sudo systemctl daemon-reload >/dev/null
 sudo systemctl enable gadget.service >/dev/null
 echo "  ✓ Services installed"
 
-# SELF-DESTRUCT AFTER SUCCESS (critical!)
+# Reboot
 echo "✅ Bootstrapped! Rebooting..."
 sleep 3
 sudo reboot

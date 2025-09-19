@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected Devices</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Status</h1>
+        {% if devices %}
+            <div class="device-status">
+                {% for device in devices %}
+                    <div class="status-box">
+                        <div class="status-content">
+                            <div class="status-id">
+                                {% if device.connected %}
+                                    <span class="online-dot"></span>&nbsp;&nbsp;<span><a href="http://{{ device.url }}">{{ device.id.upper() }}</a></span>
+                                {% else %}
+                                    <span class="offline-dot"></span>&nbsp;&nbsp;<span>{{ device.id.upper() }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No devices found.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,3 +1,28 @@
+/* Vertical layout for device status content */
+.status-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+.status-id {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.status-content a {
+    margin-top: 10px;
+}
+/* Make all links dark gray and remove underline */
+a {
+    color: #222;
+    text-decoration: none;
+    font-weight: 500;
+}
+a:hover {
+    color: #444;
+    text-decoration: underline;
+}
 .device-status {
     display: flex;
     flex-wrap: wrap;
