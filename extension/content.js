@@ -15,6 +15,29 @@
 let lastClickedFile = null;
 
 /**
+ * MACHINE-READABLE FILE EXTENSIONS
+ * Array of file extensions that should show the Send button.
+ * Only files with these extensions will have the Send functionality.
+ */
+const MACHINE_READABLE_EXTENSIONS = [
+  'nc',     // CNC G-code files
+  'txt',    // Text files
+  'gcode',  // G-code files
+  'tap',    // CNC tap files
+  'cnc',    // CNC files
+  'prg',    // Program files
+  'mpf',    // Machine program files
+  'iso',    // ISO G-code files
+  'eia',    // EIA G-code files
+  'min',    // Minimal G-code files
+  'out',    // Output files
+  'ngc',    // LinuxCNC files
+  'gc',     // G-code files
+  'mcd',    // Mastercam files
+  'mcx'     // Mastercam exchange files
+];
+
+/**
  * FILE CLICK DETECTION
  * Listens for clicks anywhere on the page and checks if user clicked on a file.
  * If a file is clicked and doesn't already have a Send button, adds one.
@@ -80,16 +103,84 @@ setInterval(() => {
 }, 2000);
 
 /**
+ * MACHINE-READABLE EXTENSION CHECK
+ * Checks if a file has an extension that qualifies for machine transfer.
+ * Extracts filename from Google Drive DOM and validates against allowed extensions.
+ * 
+ * @param {Element} fileRow - The DOM element representing a file in Google Drive
+ * @returns {boolean} - True if file has machine-readable extension
+ */
+function hasMachineReadableExtension(fileRow) {
+  // Try to get the filename from various DOM selectors
+  let fileName = '';
+  
+  // First try to get the clean filename from the strong tag
+  const strongElement = fileRow.querySelector('strong.DNoYtb');
+  if (strongElement) {
+    const name = strongElement.textContent?.trim();
+    if (name && name.includes('.')) {
+      fileName = name;
+    }
+  }
+  
+  // If not found, try fallback selectors
+  if (!fileName) {
+    const selectors = [
+      '[title]',
+      'span[role="button"]',
+      '[aria-label*="."]',
+      'div[data-target]'
+    ];
+    
+    for (const selector of selectors) {
+      const element = fileRow.querySelector(selector);
+      if (element) {
+        let name = element.getAttribute('title') || 
+                   element.getAttribute('aria-label') ||
+                   element.textContent?.trim();
+        
+        if (name && name.length > 0 && name !== 'More actions' && name.includes('.')) {
+          // Clean up filename - remove extra text after the extension
+          const match = name.match(/^(.+\.[a-zA-Z0-9]+)/);
+          if (match) {
+            fileName = match[1].trim();
+          } else {
+            fileName = name.trim();
+          }
+          break;
+        }
+      }
+    }
+  }
+  
+  // If no filename found, don't show button
+  if (!fileName) return false;
+  
+  // Extract file extension
+  const lastDotIndex = fileName.lastIndexOf('.');
+  if (lastDotIndex === -1) return false; // No extension
+  
+  const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+  
+  // Check if extension is in our allowed list
+  return MACHINE_READABLE_EXTENSIONS.includes(extension);
+}
+
+/**
  * SEND BUTTON CREATION
  * Creates and adds a "Send" button to a specific file row.
  * Button is styled via CSS and prevents event bubbling to avoid interfering with Drive UI.
  * Uses multiple strategies to find the best insertion point.
+ * Only adds button if file has a machine-readable extension.
  * 
  * @param {Element} fileRow - The DOM element representing a file in Google Drive
  */
 function addSendButton(fileRow) {
   // Don't add if button already exists
   if (fileRow.querySelector('.drive-send-btn')) return;
+  
+  // Check if file has machine-readable extension
+  if (!hasMachineReadableExtension(fileRow)) return;
   
   const button = document.createElement('button');
   button.textContent = 'Send';
