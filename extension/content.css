@@ -1,58 +1,109 @@
-/* Styles for VF2 send buttons in Google Drive */
+/**
+ * CONTENT STYLES - Google Drive Integration Styling
+ * 
+ * Styles for UI elements injected into Google Drive pages.
+ * Designed to integrate cleanly with Google Drive's existing design language.
+ */
 
-.vf2-send-btn {
-  margin: 4px !important;
-  padding: 4px 8px !important;
-  background: #1976d2 !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  font-size: 11px !important;
-  font-family: 'Google Sans', Roboto, sans-serif !important;
-  font-weight: 500 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
-  transition: all 0.2s ease !important;
-  z-index: 1000 !important;
-  position: relative !important;
-  display: inline-block !important;
-  text-decoration: none !important;
+/**
+ * SEND BUTTON STYLING
+ * Blue button that matches Google's design system.
+ * Small and unobtrusive to avoid cluttering the Drive interface.
+ */
+.drive-send-btn {
+  background: #4285f4;        /* Google Blue */
+  color: white;
+  border: none;
+  padding: 4px 8px;          /* Compact sizing */
+  border-radius: 4px;        /* Rounded corners to match Drive UI */
+  cursor: pointer;
+  font-size: 12px;           /* Small text to be unobtrusive */
+  margin-left: 8px;          /* Space from other Drive elements */
+  transition: all 0.3s ease; /* Smooth transitions */
+  min-width: 60px;           /* Wider to fit "Sending" and "Retry" text */
+  text-align: center;        /* Center the text */
 }
 
-.vf2-send-btn:hover {
-  background: #1565c0 !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
-  transform: translateY(-1px) !important;
+/**
+ * SEND BUTTON HOVER STATE
+ * Darker blue on hover for visual feedback
+ */
+.drive-send-btn:hover {
+  background: #3367d6;       /* Darker Google Blue */
 }
 
-.vf2-send-btn:active {
-  transform: translateY(0) !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+/**
+ * LOADING STATE
+ * Yellow color while upload is in progress
+ */
+.drive-send-btn.loading {
+  background: #fbbc04;       /* Google Yellow */
+  cursor: wait;
 }
 
-.vf2-send-btn:disabled {
-  cursor: not-allowed !important;
-  opacity: 0.7 !important;
+/**
+ * SUCCESS STATE
+ * Green button with checkmark for successful uploads
+ */
+.drive-send-btn.success {
+  background: #34a853;       /* Google Green */
+  cursor: default;
 }
 
-/* Ensure buttons don't interfere with Google Drive's layout */
-.vf2-send-btn {
-  flex-shrink: 0 !important;
-  min-width: auto !important;
+.drive-send-btn.success::after {
+  content: "✓";
+  display: inline-block;
+  margin-left: 4px;
 }
 
-/* Style adjustments for different Google Drive views */
-[data-target="file"] .vf2-send-btn,
-.Qr7Oae .vf2-send-btn {
-  font-size: 10px !important;
-  padding: 2px 6px !important;
+/**
+ * ERROR STATE
+ * Red button with X for failed uploads
+ */
+.drive-send-btn.error {
+  background: #ea4335;       /* Google Red */
+  cursor: pointer;           /* Allow retry */
 }
 
-/* Grid view adjustments */
-.Q5txwe .vf2-send-btn {
-  position: absolute !important;
-  top: 4px !important;
-  right: 4px !important;
-  font-size: 9px !important;
-  padding: 2px 4px !important;
+.drive-send-btn.error::after {
+  content: "✗";
+  display: inline-block;
+  margin-left: 4px;
+}
+
+
+
+/**
+ * NOTIFICATION CONTAINER
+ * Fixed position notifications that appear in top-right corner.
+ * High z-index to appear above all Drive content.
+ */
+.drive-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 4px;
+  z-index: 10000;           /* Above all other content */
+  font-weight: bold;
+}
+
+/**
+ * SUCCESS NOTIFICATION
+ * Green styling for successful operations
+ */
+.drive-notification.success {
+  background: #d4edda;      /* Light green background */
+  color: #155724;           /* Dark green text */
+  border-left: 4px solid #28a745;  /* Green accent border */
+}
+
+/**
+ * ERROR NOTIFICATION  
+ * Red styling for failed operations
+ */
+.drive-notification.error {
+  background: #f8d7da;      /* Light red background */
+  color: #721c24;           /* Dark red text */
+  border-left: 4px solid #dc3545;  /* Red accent border */
 }
