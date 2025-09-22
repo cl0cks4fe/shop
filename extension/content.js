@@ -15,6 +15,39 @@
 let lastClickedFile = null;
 
 /**
+ * BUTTON STATE TRACKING
+ * Maps file IDs to their current button states to preserve state across DOM changes
+ */
+const buttonStates = new Map();
+
+/**
+ * CONSTANTS
+ */
+const SELECTORS = {
+  SEND_BUTTON: '.drive-send-btn',
+  FILE_ROW: '[data-id]',
+  STRONG_FILENAME: 'strong.DNoYtb',
+  INSERTION_TARGETS: [
+    '[role="gridcell"]:last-child',
+    '.Q5txwe'
+  ]
+};
+
+const BUTTON_STATES = {
+  NORMAL: 'normal',
+  LOADING: 'loading',  
+  SUCCESS: 'success',
+  ERROR: 'error'
+};
+
+const TIMEOUTS = {
+  SUCCESS_RESET: 3000,
+  ERROR_RESET: 5000,
+  MAINTENANCE_CHECK: 2000,
+  STATUS_CLEAR: 2000
+};
+
+/**
  * MACHINE-READABLE FILE EXTENSIONS
  * Array of file extensions that should show the Send button.
  * Only files with these extensions will have the Send functionality.
@@ -38,131 +71,115 @@ const MACHINE_READABLE_EXTENSIONS = [
 ];
 
 /**
- * FILE CLICK DETECTION
- * Listens for clicks anywhere on the page and checks if user clicked on a file.
- * If a file is clicked and doesn't already have a Send button, adds one.
- * Stores reference to maintain button persistence.
+ * FILE INTERACTION HANDLER
+ * Handles file clicks and right-clicks to add Send buttons.
+ * Consolidated logic to avoid duplication.
  */
-document.addEventListener('click', (e) => {
-  const fileRow = e.target.closest('[data-id]');
+function handleFileInteraction(e) {
+  const fileRow = e.target.closest(SELECTORS.FILE_ROW);
   if (fileRow) {
     lastClickedFile = fileRow;
-    if (!fileRow.querySelector('.drive-send-btn')) {
+    if (!fileRow.querySelector(SELECTORS.SEND_BUTTON)) {
       addSendButton(fileRow);
     }
   }
-});
+}
 
 /**
- * FILE RIGHT-CLICK DETECTION
- * Listens for right-clicks (context menu) on files.
- * Also adds Send button when user right-clicks on a file.
+ * FILE CLICK AND CONTEXT MENU DETECTION
+ * Listens for both clicks and right-clicks on files.
  */
-document.addEventListener('contextmenu', (e) => {
-  const fileRow = e.target.closest('[data-id]');
-  if (fileRow) {
-    lastClickedFile = fileRow;
-    if (!fileRow.querySelector('.drive-send-btn')) {
-      addSendButton(fileRow);
+document.addEventListener('click', handleFileInteraction);
+document.addEventListener('contextmenu', handleFileInteraction);
+
+/**
+ * BUTTON MAINTENANCE
+ * Re-adds send button to last clicked file if it gets removed by Drive's DOM updates.
+ */
+function maintainButton() {
+  if (lastClickedFile && document.contains(lastClickedFile)) {
+    if (!lastClickedFile.querySelector(SELECTORS.SEND_BUTTON)) {
+      addSendButton(lastClickedFile);
     }
   }
-});
+}
 
 /**
  * DOM MUTATION OBSERVER
- * Watches for Google Drive DOM changes and re-adds buttons when they get removed.
- * This handles the case where Drive updates the UI and removes our buttons.
+ * Watches for Google Drive DOM changes and maintains buttons.
  */
-const observer = new MutationObserver(() => {
-  // Re-add button to last clicked file if it's missing
-  if (lastClickedFile && !lastClickedFile.querySelector('.drive-send-btn')) {
-    // Check if the element is still in the DOM
-    if (document.contains(lastClickedFile)) {
-      addSendButton(lastClickedFile);
-    }
-  }
-});
-
-// Start observing DOM changes
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
+const observer = new MutationObserver(maintainButton);
+observer.observe(document.body, { childList: true, subtree: true });
 
 /**
  * PERIODIC BUTTON MAINTENANCE
- * Checks every 2 seconds if the last clicked file still has its button.
- * Re-adds it if Google Drive removed it during DOM updates.
+ * Backup maintenance check every 2 seconds.
  */
-setInterval(() => {
-  if (lastClickedFile && document.contains(lastClickedFile)) {
-    if (!lastClickedFile.querySelector('.drive-send-btn')) {
-      addSendButton(lastClickedFile);
-    }
-  }
-}, 2000);
+setInterval(maintainButton, TIMEOUTS.MAINTENANCE_CHECK);
 
 /**
- * MACHINE-READABLE EXTENSION CHECK
- * Checks if a file has an extension that qualifies for machine transfer.
- * Extracts filename from Google Drive DOM and validates against allowed extensions.
+ * FILENAME EXTRACTION UTILITY
+ * Centralized function to extract filename from Google Drive DOM elements.
+ * Uses multiple fallback strategies to find the filename reliably.
  * 
  * @param {Element} fileRow - The DOM element representing a file in Google Drive
- * @returns {boolean} - True if file has machine-readable extension
+ * @returns {string} - The extracted filename or empty string if not found
  */
-function hasMachineReadableExtension(fileRow) {
-  // Try to get the filename from various DOM selectors
-  let fileName = '';
-  
-  // First try to get the clean filename from the strong tag
+function extractFileName(fileRow) {
+  // Try to get the clean filename from the strong tag first
   const strongElement = fileRow.querySelector('strong.DNoYtb');
   if (strongElement) {
     const name = strongElement.textContent?.trim();
     if (name && name.includes('.')) {
-      fileName = name;
+      return name;
     }
   }
   
-  // If not found, try fallback selectors
-  if (!fileName) {
-    const selectors = [
-      '[title]',
-      'span[role="button"]',
-      '[aria-label*="."]',
-      'div[data-target]'
-    ];
-    
-    for (const selector of selectors) {
-      const element = fileRow.querySelector(selector);
-      if (element) {
-        let name = element.getAttribute('title') || 
-                   element.getAttribute('aria-label') ||
-                   element.textContent?.trim();
-        
-        if (name && name.length > 0 && name !== 'More actions' && name.includes('.')) {
-          // Clean up filename - remove extra text after the extension
-          const match = name.match(/^(.+\.[a-zA-Z0-9]+)/);
-          if (match) {
-            fileName = match[1].trim();
-          } else {
-            fileName = name.trim();
-          }
-          break;
+  // Fallback selectors if strong tag doesn't work
+  const selectors = [
+    '[title]',
+    'span[role="button"]',
+    '[aria-label*="."]',
+    'div[data-target]'
+  ];
+  
+  for (const selector of selectors) {
+    const element = fileRow.querySelector(selector);
+    if (element) {
+      let name = element.getAttribute('title') || 
+                 element.getAttribute('aria-label') ||
+                 element.textContent?.trim();
+      
+      if (name && name.length > 0 && name !== 'More actions' && name.includes('.')) {
+        // Clean up filename - remove extra text after the extension
+        const match = name.match(/^(.+\.[a-zA-Z0-9]+)/);
+        if (match) {
+          return match[1].trim();
+        } else {
+          return name.trim();
         }
       }
     }
   }
   
-  // If no filename found, don't show button
+  return ''; // No filename found
+}
+
+/**
+ * MACHINE-READABLE EXTENSION CHECK
+ * Checks if a file has an extension that qualifies for machine transfer.
+ * 
+ * @param {Element} fileRow - The DOM element representing a file in Google Drive
+ * @returns {boolean} - True if file has machine-readable extension
+ */
+function hasMachineReadableExtension(fileRow) {
+  const fileName = extractFileName(fileRow);
   if (!fileName) return false;
   
-  // Extract file extension
   const lastDotIndex = fileName.lastIndexOf('.');
-  if (lastDotIndex === -1) return false; // No extension
+  if (lastDotIndex === -1) return false;
   
   const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-  
-  // Check if extension is in our allowed list
   return MACHINE_READABLE_EXTENSIONS.includes(extension);
 }
 
@@ -182,8 +199,8 @@ function addSendButton(fileRow) {
   // Check if file has machine-readable extension
   if (!hasMachineReadableExtension(fileRow)) return;
   
+  const fileId = fileRow.getAttribute('data-id');
   const button = document.createElement('button');
-  button.textContent = 'Send';
   button.className = 'drive-send-btn';
   button.style.position = 'relative';
   button.style.zIndex = '1000';
@@ -192,6 +209,10 @@ function addSendButton(fileRow) {
     e.preventDefault();
     sendFile(fileRow);
   };
+  
+  // Restore previous button state if it exists, otherwise set to normal
+  const savedState = buttonStates.get(fileId) || { state: 'normal', text: 'Send' };
+  restoreButtonState(button, savedState);
   
   // Try different insertion strategies
   const insertionTargets = [
@@ -237,47 +258,8 @@ async function sendFile(fileRow) {
   const port = settings.port || '3000';
   
   // Extract file information from Google Drive DOM
-  const fileId = fileRow.getAttribute('data-id');  // Google Drive's unique file ID
-  
-  // Try multiple selectors to get the clean filename
-  let fileName = 'file';
-  
-  // First try to get the clean filename from the strong tag
-  const strongElement = fileRow.querySelector('strong.DNoYtb');
-  if (strongElement) {
-    const name = strongElement.textContent?.trim();
-    if (name && name.includes('.')) {
-      fileName = name;
-    }
-  } else {
-    // Fallback to other selectors
-    const selectors = [
-      '[title]',
-      'span[role="button"]',
-      '[aria-label*="."]',
-      'div[data-target]'
-    ];
-    
-    for (const selector of selectors) {
-      const element = fileRow.querySelector(selector);
-      if (element) {
-        let name = element.getAttribute('title') || 
-                   element.getAttribute('aria-label') ||
-                   element.textContent?.trim();
-        
-        if (name && name.length > 0 && name !== 'More actions' && name.includes('.')) {
-          // Clean up filename - remove extra text after the extension
-          const match = name.match(/^(.+\.[a-zA-Z0-9]+)/);
-          if (match) {
-            fileName = match[1].trim();
-          } else {
-            fileName = name.trim();
-          }
-          break;
-        }
-      }
-    }
-  }
+  const fileId = fileRow.getAttribute('data-id');
+  const fileName = extractFileName(fileRow) || 'file';
   
   // Send transfer request to background script (which can bypass CORS)
   chrome.runtime.sendMessage({
@@ -287,52 +269,157 @@ async function sendFile(fileRow) {
     host: host,
     port: port
   }, (response) => {
-    // Update button based on result
+    // Update button state - works even if button was removed/re-created
     if (response.success) {
-      setButtonState(button, 'success');
-      // Reset to normal state after 3 seconds
-      setTimeout(() => setButtonState(button, 'normal'), 3000);
+      updateButtonStateById(fileId, BUTTON_STATES.SUCCESS);
+      setTimeout(() => updateButtonStateById(fileId, BUTTON_STATES.NORMAL), TIMEOUTS.SUCCESS_RESET);
     } else {
-      setButtonState(button, 'error');
-      // Reset to normal state after 5 seconds (allow retry)
-      setTimeout(() => setButtonState(button, 'normal'), 5000);
+      updateButtonStateById(fileId, BUTTON_STATES.ERROR);
+      setTimeout(() => updateButtonStateById(fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
     }
   });
 }
 
 /**
+ * UPDATE BUTTON STATE BY FILE ID
+ * Updates button state for a specific file, whether the button currently exists or not.
+ * Always updates the saved state, and updates the DOM button if it exists.
+ * 
+ * @param {string} fileId - The Google Drive file ID
+ * @param {string} state - 'normal', 'loading', 'success', or 'error'
+ */
+function updateButtonStateById(fileId, state) {
+  // First, find the button in the DOM if it exists
+  const fileRow = document.querySelector(`[data-id="${fileId}"]`);
+  const button = fileRow?.querySelector('.drive-send-btn');
+  
+  if (button) {
+    // Button exists, update it normally
+    setButtonState(button, state);
+  } else {
+    // Button doesn't exist, just update the saved state
+    let buttonInfo = { state: state };
+    
+    switch (state) {
+      case 'loading':
+        buttonInfo.text = 'Sending';
+        break;
+      case 'success':
+        buttonInfo.text = 'Sent';
+        break;
+      case 'error':
+        buttonInfo.text = 'Retry';
+        break;
+      case 'normal':
+      default:
+        buttonInfo.text = 'Send';
+        buttonInfo.state = 'normal';
+        break;
+    }
+    
+    // Save state for when button gets re-created
+    buttonStates.set(fileId, buttonInfo);
+    
+    // Clean up old states when map gets too large
+    if (buttonStates.size > 100) {
+      const firstKey = buttonStates.keys().next().value;
+      buttonStates.delete(firstKey);
+    }
+  }
+}
+
+/**
  * BUTTON STATE MANAGEMENT
  * Updates button appearance and behavior based on upload state.
+ * Also saves the state so it can be restored if button gets re-created.
  * 
  * @param {Element} button - The send button element
  * @param {string} state - 'normal', 'loading', 'success', or 'error'
  */
 function setButtonState(button, state) {
+  const fileRow = button.closest('[data-id]');
+  const fileId = fileRow?.getAttribute('data-id');
+  
   // Reset all state classes
   button.classList.remove('loading', 'success', 'error');
+  
+  let buttonInfo = { state: state };
   
   switch (state) {
     case 'loading':
       button.classList.add('loading');
       button.textContent = 'Sending';
       button.disabled = true;
+      buttonInfo.text = 'Sending';
       break;
       
     case 'success':
       button.classList.add('success');
       button.textContent = 'Sent';
       button.disabled = true;
+      buttonInfo.text = 'Sent';
       break;
       
     case 'error':
       button.classList.add('error');
       button.textContent = 'Retry';
       button.disabled = false;
+      buttonInfo.text = 'Retry';
       break;
       
     case 'normal':
     default:
       button.textContent = 'Send';
+      button.disabled = false;
+      buttonInfo.text = 'Send';
+      buttonInfo.state = 'normal';
+      break;
+  }
+  
+  // Save button state for restoration
+  if (fileId) {
+    buttonStates.set(fileId, buttonInfo);
+    
+    // Clean up old states when map gets too large (prevent memory leak)
+    if (buttonStates.size > 100) {
+      const firstKey = buttonStates.keys().next().value;
+      buttonStates.delete(firstKey);
+    }
+  }
+}
+
+/**
+ * BUTTON STATE RESTORATION
+ * Restores a button to its previously saved state.
+ * 
+ * @param {Element} button - The send button element
+ * @param {Object} savedState - Previously saved button state
+ */
+function restoreButtonState(button, savedState) {
+  button.classList.remove('loading', 'success', 'error');
+  
+  switch (savedState.state) {
+    case 'loading':
+      button.classList.add('loading');
+      button.textContent = savedState.text;
+      button.disabled = true;
+      break;
+      
+    case 'success':
+      button.classList.add('success');
+      button.textContent = savedState.text;
+      button.disabled = true;
+      break;
+      
+    case 'error':
+      button.classList.add('error');
+      button.textContent = savedState.text;
+      button.disabled = false;
+      break;
+      
+    case 'normal':
+    default:
+      button.textContent = savedState.text;
       button.disabled = false;
       break;
   }

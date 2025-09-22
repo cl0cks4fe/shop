@@ -21,25 +21,32 @@ chrome.storage.sync.get(['host', 'port'], (result) => {
 });
 
 /**
+ * GET CURRENT SETTINGS
+ * Extracts host/port values from form with defaults.
+ */
+function getCurrentSettings() {
+  return {
+    host: document.getElementById('host').value || 'test.local',
+    port: document.getElementById('port').value || '3000'
+  };
+}
+
+/**
  * SAVE SETTINGS HANDLER
  * Saves the current host/port values to browser storage.
- * Shows confirmation message to user.
  */
 document.getElementById('saveBtn').onclick = () => {
-  const host = document.getElementById('host').value || 'test.local';
-  const port = document.getElementById('port').value || '3000';
+  const { host, port } = getCurrentSettings();
   chrome.storage.sync.set({ host, port });
   showStatus('Saved!', 'success');
 };
 
 /**
  * PING SERVER HANDLER
- * Tests connectivity to the configured server by making a GET request to /ping endpoint.
- * Provides immediate feedback on whether the server is reachable.
+ * Tests connectivity to the configured server.
  */
 document.getElementById('pingBtn').onclick = async () => {
-  const host = document.getElementById('host').value || 'test.local';
-  const port = document.getElementById('port').value || '3000';
+  const { host, port } = getCurrentSettings();
   
   try {
     const response = await fetch(`http://${host}:${port}/ping`);

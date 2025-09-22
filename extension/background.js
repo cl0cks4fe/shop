@@ -99,6 +99,6 @@ async function downloadAndUpload(fileId, fileName, host, port) {
     }
     
   } catch (error) {
-    throw error;
+    return { success: false, error: error.message };
   }
 }

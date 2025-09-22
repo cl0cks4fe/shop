@@ -34,7 +34,7 @@
 
 /**
  * LOADING STATE
- * Yellow color while upload is in progress
+ * Yellow color while upload is in progress with black text for better readability
  */
 .drive-send-btn.loading {
   background: #fbbc04;       /* Google Yellow */
@@ -69,41 +69,4 @@
   content: "✗";
   display: inline-block;
   margin-left: 4px;
-}
-
-
-
-/**
- * NOTIFICATION CONTAINER
- * Fixed position notifications that appear in top-right corner.
- * High z-index to appear above all Drive content.
- */
-.drive-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 12px 20px;
-  border-radius: 4px;
-  z-index: 10000;           /* Above all other content */
-  font-weight: bold;
-}
-
-/**
- * SUCCESS NOTIFICATION
- * Green styling for successful operations
- */
-.drive-notification.success {
-  background: #d4edda;      /* Light green background */
-  color: #155724;           /* Dark green text */
-  border-left: 4px solid #28a745;  /* Green accent border */
-}
-
-/**
- * ERROR NOTIFICATION  
- * Red styling for failed operations
- */
-.drive-notification.error {
-  background: #f8d7da;      /* Light red background */
-  color: #721c24;           /* Dark red text */
-  border-left: 4px solid #dc3545;  /* Red accent border */
 }
