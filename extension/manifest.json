@@ -3,30 +3,39 @@
   "name": "Drive to Server",
   "version": "1.0",
   "description": "Send Google Drive files to your server",
-  
+
   "browser_specific_settings": {
     "gecko": {
       "id": "drive-to-server@example.com"
     }
   },
-  
+
   "permissions": [
     "storage",
     "activeTab",
-    "contextMenus"
+    "contextMenus",
+    "identity"
   ],
-  
+
   "host_permissions": [
     "*://drive.google.com/*",
+    "https://www.googleapis.com/*",
     "http://*/*",
     "https://*/*"
   ],
-  
+
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.readonly"
+    ]
+  },
+
   "action": {
     "default_popup": "popup.html",
     "default_title": "Drive to Server Settings"
   },
-  
+
   "content_scripts": [
     {
       "matches": ["*://drive.google.com/*"],
@@ -34,11 +43,11 @@
       "css": ["content.css"]
     }
   ],
-  
+
   "background": {
     "scripts": ["background.js"]
   },
-  
+
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http: https:;"
   }

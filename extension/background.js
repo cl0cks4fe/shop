@@ -1,10 +1,10 @@
 /**
  * BACKGROUND SCRIPT - Core Extension Logic
- * 
+ *
  * Handles extension initialization, context menu creation, and file transfer operations.
  * Runs in the background and can make cross-origin requests that content scripts cannot.
  * This is the key component that bypasses CORS restrictions for Google Drive downloads.
- * 
+ *
  * Features:
  * - Creates right-click context menu for Google Drive
  * - Downloads files from Google Drive using official URLs
@@ -16,14 +16,25 @@
  * EXTENSION INITIALIZATION
  * Sets up the right-click context menu when extension is installed/enabled.
  * Menu only appears on Google Drive pages for relevant context.
+ * Also handles initial authentication setup.
  */
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Create context menu
   chrome.contextMenus.create({
     id: "sendToDriveServer",
     title: "Send to Server",
     contexts: ["all"],                                    // Available on any page element
     documentUrlPatterns: ["*://drive.google.com/*"]      // Only show on Google Drive
   });
+
+  // Optional: Prompt for initial authentication on install
+  // This can also be done on first use instead
+  try {
+    await getAuthToken();
+    console.log('Google Drive access granted during installation');
+  } catch (error) {
+    console.log('Authentication will be requested on first use:', error.message);
+  }
 });
 
 /**
@@ -36,6 +47,44 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     chrome.tabs.sendMessage(tab.id, { action: "sendFromContext" });
   }
 });
+
+/**
+ * OAUTH2 AUTHENTICATION
+ * Gets an access token for Google Drive API access.
+ * Prompts user for permission on first use.
+ */
+async function getAuthToken() {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive: true }, (token) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(token);
+      }
+    });
+  });
+}
+
+/**
+ * UPLOAD TO SERVER HELPER
+ * Separated upload logic for reuse between different download methods.
+ */
+async function uploadToServer(fileBlob, fileName, host, port) {
+  const formData = new FormData();
+  formData.append('file', fileBlob, fileName);
+
+  const uploadResponse = await fetch(`http://${host}:${port}/upload`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (uploadResponse.ok) {
+    return { success: true };
+  } else {
+    const errorText = await uploadResponse.text().catch(() => 'Unknown error');
+    throw new Error(`Upload failed (${uploadResponse.status}): ${errorText}`);
+  }
+}
 
 /**
  * MESSAGE HANDLER - Content Script Communication
@@ -59,10 +108,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * 2. Converts response to blob for file handling
  * 3. Creates form data for multipart upload
  * 4. Uploads file to user's configured server
- * 
+ *
  * This function runs in background script context which bypasses CORS restrictions
  * that would block the same operations in a content script.
- * 
+ *
  * @param {string} fileId - Google Drive file ID extracted from DOM
  * @param {string} fileName - Human-readable file name for server
  * @param {string} host - Target server hostname
@@ -71,33 +120,52 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  */
 async function downloadAndUpload(fileId, fileName, host, port) {
   try {
-    // STEP 1: Download from Google Drive
-    // Uses official Google Drive export URL that works with user's existing session
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    const response = await fetch(downloadUrl);
-    
-    if (!response.ok) {
-      throw new Error('Could not download from Google Drive');
-    }
-    
-    // STEP 2: Convert to file blob
-    const fileBlob = await response.blob();
-    const formData = new FormData();
-    formData.append('file', fileBlob, fileName);
-    
-    // STEP 3: Upload to user's server
-    // Posts as multipart/form-data which most servers expect for file uploads
-    const uploadResponse = await fetch(`http://${host}:${port}/upload`, {
-      method: 'POST',
-      body: formData
+    // STEP 1: Get OAuth token
+    const token = await getAuthToken();
+
+    // STEP 2: Get file metadata from Drive API to get the real filename
+    const metadataResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-    
-    if (uploadResponse.ok) {
-      return { success: true };
-    } else {
-      throw new Error('Upload failed');
+
+    if (!metadataResponse.ok) {
+      throw new Error(`Could not get file metadata: ${metadataResponse.status} ${metadataResponse.statusText}`);
     }
-    
+
+    const metadata = await metadataResponse.json();
+    const actualFileName = metadata.name || fileName; // Use API filename, fallback to DOM-extracted name
+    const mimeType = metadata.mimeType;
+
+    // STEP 3: Download file content from Google Drive API
+    let response;
+
+    // Check if it's a Google Workspace document that needs export
+    if (mimeType.startsWith('application/vnd.google-apps.')) {
+      // Export Google Docs/Sheets/Slides as plain text
+      response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } else {
+      // Direct download for regular files
+      response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    }
+
+    if (!response.ok) {
+      throw new Error(`Could not download from Google Drive: ${response.status} ${response.statusText}`);
+    }
+
+    // STEP 4: Convert to file blob and upload with the correct filename
+    const fileBlob = await response.blob();
+    return await uploadToServer(fileBlob, actualFileName, host, port);
+
   } catch (error) {
     return { success: false, error: error.message };
   }
