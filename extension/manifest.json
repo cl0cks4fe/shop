@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "VF2 Machine Controller",
+  "version": "1.0.0",
+  "description": "Send .nc files from Google Drive directly to VF2 machines via local USB gadgets",
+
+  "permissions": [
+    "activeTab",
+    "storage",
+    "notifications",
+    "*://drive.google.com/*",
+    "http://*/",
+    "https://*/"
+  ],
+
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+
+  "content_scripts": [{
+    "matches": ["*://drive.google.com/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_end"
+  }],
+
+  "browser_action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.svg",
+      "48": "icons/icon-48.svg",
+      "128": "icons/icon-128.svg"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "48": "icons/icon-48.svg",
+    "128": "icons/icon-128.svg"
+  },
+
+  "web_accessible_resources": [
+    "icons/*.svg"
+  ]
+}

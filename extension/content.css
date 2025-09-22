@@ -1,0 +1,58 @@
+/* Styles for VF2 send buttons in Google Drive */
+
+.vf2-send-btn {
+  margin: 4px !important;
+  padding: 4px 8px !important;
+  background: #1976d2 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  font-family: 'Google Sans', Roboto, sans-serif !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+  transition: all 0.2s ease !important;
+  z-index: 1000 !important;
+  position: relative !important;
+  display: inline-block !important;
+  text-decoration: none !important;
+}
+
+.vf2-send-btn:hover {
+  background: #1565c0 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.vf2-send-btn:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+}
+
+.vf2-send-btn:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+
+/* Ensure buttons don't interfere with Google Drive's layout */
+.vf2-send-btn {
+  flex-shrink: 0 !important;
+  min-width: auto !important;
+}
+
+/* Style adjustments for different Google Drive views */
+[data-target="file"] .vf2-send-btn,
+.Qr7Oae .vf2-send-btn {
+  font-size: 10px !important;
+  padding: 2px 6px !important;
+}
+
+/* Grid view adjustments */
+.Q5txwe .vf2-send-btn {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  font-size: 9px !important;
+  padding: 2px 4px !important;
+}
