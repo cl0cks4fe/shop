@@ -1,6 +1,6 @@
 venv
 *.zip
-send.sh
+test.sh
 instance/
 zip.sh
 __pycache__
