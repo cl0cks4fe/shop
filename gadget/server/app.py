@@ -22,19 +22,19 @@ def secure_filename(filename):
     return os.path.basename(filename)
 
 
-def ping_loop(app):
-    """Background loop that pings the shop server and updates CONNECTED_FLAG."""
-    with app.app_context():
-        while True:
-            try:
-                response = requests.get(f'{Config.SHOP_URL}/devices/ping', headers={'id': f'{Config.DEVICE_NAME}', 'port': f'{Config.PORT}'}, timeout=2)
-                if response.status_code == 200:
-                    Config.CONNECTED_FLAG.set()
-                else:
-                    Config.CONNECTED_FLAG.clear()
-            except Exception:
-                Config.CONNECTED_FLAG.clear()
-            time.sleep(5)
+# def ping_loop(app):
+#     """Background loop that pings the shop server and updates CONNECTED_FLAG."""
+#     with app.app_context():
+#         while True:
+#             try:
+#                 response = requests.get(f'{Config.SHOP_URL}/devices/ping', headers={'id': f'{Config.DEVICE_NAME}', 'port': f'{Config.PORT}'}, timeout=2)
+#                 if response.status_code == 200:
+#                     Config.CONNECTED_FLAG.set()
+#                 else:
+#                     Config.CONNECTED_FLAG.clear()
+#             except Exception:
+#                 Config.CONNECTED_FLAG.clear()
+#             time.sleep(60)
 
 
 def create_app():
@@ -79,8 +79,8 @@ def create_app():
         return render_template('index.html', device_name=Config.DEVICE_NAME)
 
     # Start background ping thread
-    ping_thread = threading.Thread(target=ping_loop, args=(app,), daemon=True)
-    ping_thread.start()
+    # ping_thread = threading.Thread(target=ping_loop, args=(app,), daemon=True)
+    # ping_thread.start()
 
     return app
 
