@@ -26,7 +26,6 @@ const buttonStates = new Map();
 const SELECTORS = {
   SEND_BUTTON: '.drive-send-btn',
   FILE_ROW: '[data-id]',
-  STRONG_FILENAME: 'strong.DNoYtb',
   INSERTION_TARGETS: [
     '[role="gridcell"]:last-child',
   ]
@@ -46,28 +45,7 @@ const TIMEOUTS = {
   STATUS_CLEAR: 2000
 };
 
-/**
- * MACHINE-READABLE FILE EXTENSIONS
- * Array of file extensions that should show the Send button.
- * Only files with these extensions will have the Send functionality.
- */
-const MACHINE_READABLE_EXTENSIONS = [
-  'nc',     // CNC G-code files
-  'txt',    // Text files
-  'gcode',  // G-code files
-  'tap',    // CNC tap files
-  'cnc',    // CNC files
-  'prg',    // Program files
-  'mpf',    // Machine program files
-  'iso',    // ISO G-code files
-  'eia',    // EIA G-code files
-  'min',    // Minimal G-code files
-  'out',    // Output files
-  'ngc',    // LinuxCNC files
-  'gc',     // G-code files
-  'mcd',    // Mastercam files
-  'mcx'     // Mastercam exchange files
-];
+
 
 /**
  * FILE INTERACTION HANDLER
@@ -117,69 +95,15 @@ observer.observe(document.body, { childList: true, subtree: true });
 setInterval(maintainButton, TIMEOUTS.MAINTENANCE_CHECK);
 
 /**
- * FILENAME EXTRACTION UTILITY
- * Centralized function to extract filename from Google Drive DOM elements.
- * Uses multiple fallback strategies to find the filename reliably.
+ * FILE ID EXTRACTION UTILITY
+ * Simple function to get the Google Drive file ID from DOM.
+ * File ID is stable and reliable, unlike filename scraping.
  *
  * @param {Element} fileRow - The DOM element representing a file in Google Drive
- * @returns {string} - The extracted filename or empty string if not found
+ * @returns {string|null} - The Google Drive file ID or null if not found
  */
-function extractFileName(fileRow) {
-  // Try to get the clean filename from the strong tag first
-  const strongElement = fileRow.querySelector('strong.DNoYtb');
-  if (strongElement) {
-    const name = strongElement.textContent?.trim();
-    if (name && name.includes('.')) {
-      return name;
-    }
-  }
-
-  // Fallback selectors if strong tag doesn't work
-  const selectors = [
-    '[title]',
-    'span[role="button"]',
-    '[aria-label*="."]',
-    'div[data-target]'
-  ];
-
-  for (const selector of selectors) {
-    const element = fileRow.querySelector(selector);
-    if (element) {
-      let name = element.getAttribute('title') ||
-                 element.getAttribute('aria-label') ||
-                 element.textContent?.trim();
-
-      if (name && name.length > 0 && name !== 'More actions' && name.includes('.')) {
-        // Clean up filename - remove extra text after the extension
-        const match = name.match(/^(.+\.[a-zA-Z0-9]+)/);
-        if (match) {
-          return match[1].trim();
-        } else {
-          return name.trim();
-        }
-      }
-    }
-  }
-
-  return ''; // No filename found
-}
-
-/**
- * MACHINE-READABLE EXTENSION CHECK
- * Checks if a file has an extension that qualifies for machine transfer.
- *
- * @param {Element} fileRow - The DOM element representing a file in Google Drive
- * @returns {boolean} - True if file has machine-readable extension
- */
-function hasMachineReadableExtension(fileRow) {
-  const fileName = extractFileName(fileRow);
-  if (!fileName) return false;
-
-  const lastDotIndex = fileName.lastIndexOf('.');
-  if (lastDotIndex === -1) return false;
-
-  const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-  return MACHINE_READABLE_EXTENSIONS.includes(extension);
+function extractFileId(fileRow) {
+  return fileRow.getAttribute('data-id');
 }
 
 /**
@@ -195,9 +119,7 @@ function addSendButton(fileRow) {
   // Don't add if button already exists
   if (fileRow.querySelector('.drive-send-btn')) return;
 
-  // Check if file has machine-readable extension
-  if (!hasMachineReadableExtension(fileRow)) return;
-
+  // Always add button - let the background script determine file compatibility via API
   const fileId = fileRow.getAttribute('data-id');
   const button = document.createElement('button');
   button.className = 'drive-send-btn';
@@ -256,15 +178,13 @@ async function sendFile(fileRow) {
   const host = settings.host || 'test.local';
   const port = settings.port || '3000';
 
-  // Extract file information from Google Drive DOM
+  // Extract file ID from Google Drive DOM - background script will get filename via API
   const fileId = fileRow.getAttribute('data-id');
-  const fileName = extractFileName(fileRow) || 'file';
 
   // Send transfer request to background script (which can bypass CORS)
   chrome.runtime.sendMessage({
     action: 'downloadAndUpload',
     fileId: fileId,
-    fileName: fileName,
     host: host,
     port: port
   }, (response) => {
