@@ -1,78 +1,78 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "🚀 Starting gadget application installation..."
+echo "Installing gadget application..."
 
-echo "🏷️  Device Configuration..."
+echo "Device setup..."
 if [ ! -f /etc/gadget-device-name ]; then
-    read -p "   Enter name: " -r DEVICE_NAME
+    read -p "Enter device name: " -r DEVICE_NAME
     echo "$DEVICE_NAME" | sudo tee /etc/gadget-device-name > /dev/null
 fi
-echo "  ✓ Device is named: $(cat /etc/gadget-device-name)"
+echo "  device: $(cat /etc/gadget-device-name)"
 
 APP_DIR="/usr/local/bin/gadget/server"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR=""
 
-echo "📁 Installation directory: $APP_DIR"
-echo "📦 Source files location: $SCRIPT_DIR"
+echo "Install dir: $APP_DIR"
+echo "Source dir: $SCRIPT_DIR"
 
-echo "🛑 Stopping gadget-server service (if running)..."
+echo "Stopping service..."
 if sudo systemctl stop gadget-server 2>/dev/null; then
-    echo "  ✓ Service stopped successfully"
+    echo "  stopped"
 else
-    echo "  ℹ Service was not running"
+    echo "  wasn't running"
 fi
 
-echo "🔍 Checking for existing installation..."
+echo "Checking for existing install..."
 if [ -d "$APP_DIR" ]; then
     BACKUP_DIR="$APP_DIR.bak-$(date +%s)"
-    echo "  📦 Found existing installation, creating backup..."
+    echo "  backing up existing files..."
     sudo mv "$APP_DIR" "$BACKUP_DIR"
-    echo "  ✓ Backed up to: $BACKUP_DIR"
+    echo "  backed up to: $BACKUP_DIR"
 else
-    echo "  ℹ No existing installation found (first-time install)"
+    echo "  fresh install"
 fi
 
-# Install new version
-echo "📋 Installing application files..."
+# copy files
+echo "Installing files..."
 sudo mkdir -p "$APP_DIR"
-echo "  ✓ Created application directory"
+echo "  created dir"
 
 sudo cp -r "$SCRIPT_DIR"/* "$APP_DIR"/
-echo "  ✓ Copied all application files"
+echo "  copied files"
 
 sudo rm -f "$APP_DIR/install.sh"
-echo "  ✓ Removed installer script from directory"
+echo "  cleaned up installer"
 
-# Setup virtual environment
-echo "🐍 Setting up Python virtual environment..."
+# setup python env
+echo "Setting up python environment..."
 if [ -d "$APP_DIR/venv" ]; then
-    echo "  🗑️ Removing old virtual environment..."
+    echo "  removing old venv..."
     sudo rm -rf "$APP_DIR/venv"
 fi
 
 sudo python3 -m venv "$APP_DIR/venv"
-echo "  ✓ Created new virtual environment"
+echo "  created venv"
 
-echo "   📦 Installing Python dependencies..."
+echo "Installing dependencies..."
 sudo "$APP_DIR/venv/bin/pip" install -q -r "$APP_DIR/requirements.txt"
-echo "  ✓ Dependencies installed successfully"
+echo "  pip install done"
 
-# Start service
-echo "⚙️  Configuring system service..."
+# start service
+echo "Starting service..."
 sudo systemctl enable gadget-server >/dev/null
-echo "  ✓ Service enabled for auto-start on boot"
+echo "  enabled for boot"
 
-echo "   🔄 Starting gadget-server service..."
+echo "Starting gadget-server..."
 sudo systemctl start gadget-server >/dev/null
-echo "  ✓ Service started successfully"
+echo "  started"
 
-# Verify service is running
-echo "🔍 Verifying installation..."
+# check if it worked
+echo "Checking status..."
 if sudo systemctl is-active --quiet gadget-server; then
-    echo "  ✅ Service is running correctly"
+    echo "  running ok"
 else
-    echo "  ❌ Warning: Service may not have started properly"
+    echo "  warning: service might not be running"
 fi
-echo "🚀 Application installed successfully!"
+echo "Install complete."

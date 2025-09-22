@@ -29,6 +29,14 @@ def create_app():
     # Ensure upload folder exists
     os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
+    def run_transfer_script(filename):
+        """Run transfer script in background thread"""
+        try:
+            subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')], check=True)
+            logger.info(f"Transfer script completed for file: {filename}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Transfer script failed for file {filename}: {e}")
+
     @app.route('/ping', methods=['GET'])
     def ping():
         return 'ok', 200
@@ -48,13 +56,15 @@ def create_app():
             except Exception as e:
                 logger.error(f"File save failed: {e}")
                 return 'File save failed', 500
-            try:
-                subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')], check=True)
-                logger.info(f"File uploaded: {filename}")
-                return redirect(url_for('upload', success=True))
-            except subprocess.CalledProcessError:
-                logger.error("Update failed during transfer.sh execution")
-                return 'Update failed', 500
+            
+            # Start transfer script in background thread
+            transfer_thread = threading.Thread(target=run_transfer_script, args=(filename,))
+            transfer_thread.daemon = True
+            transfer_thread.start()
+            
+            logger.info(f"File uploaded: {filename} (transfer script running in background)")
+            return redirect(url_for('upload', success=True))
+        
         success = request.args.get('success')
         return render_template('upload.html', success=success, device_name=Config.DEVICE_NAME)
 
