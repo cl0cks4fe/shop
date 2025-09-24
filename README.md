@@ -2,9 +2,8 @@
 
 ## gadget-extension
 
-```
-wget https://github.com/cl0cks4fe/shop/releases/latest/download/gadget-extension.zip
-```
+latest: https://github.com/cl0cks4fe/shop/releases/latest/download/gadget-extension.zip
+
 ## gadget
 
 ### bootstrap
