@@ -52,9 +52,16 @@ h1 {
     background: #fafafa;
 }
 
-.upload-area:hover {
+.upload-area:hover:not(.disabled) {
     border-color: #888;
     background: #f0f0f0;
+}
+
+.upload-area.disabled {
+    border-color: #ddd;
+    background: #f8f8f8;
+    color: #999;
+    cursor: not-allowed;
 }
 
 input[type="file"] {
@@ -109,6 +116,39 @@ button:disabled {
     cursor: default;
 }
 
+/* Flash message styles */
+.flash-message {
+    padding: 14px;
+    border-radius: 0;
+    margin: 20px 0;
+    font-weight: 500;
+}
+
+.flash-message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-left: 4px solid #4caf50;
+}
+
+.flash-message.error {
+    background: #ffebee;
+    color: #c62828;
+    border-left: 4px solid #f44336;
+}
+
+.flash-message.info {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-left: 4px solid #2196f3;
+}
+
+.flash-message.warning {
+    background: #fff3e0;
+    color: #ef6c00;
+    border-left: 4px solid #ff9800;
+}
+
+/* Legacy success class for backward compatibility */
 .success {
     background: #e8f5e9;
     color: #2e7d32;

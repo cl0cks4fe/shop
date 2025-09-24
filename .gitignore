@@ -4,3 +4,5 @@ test.sh
 instance/
 zip.sh
 __pycache__
+upload
+transferred

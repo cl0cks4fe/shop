@@ -1,76 +1,44 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask
 import os
-import subprocess
-import time
-import threading
 import logging
-import requests
+from pathlib import Path
 
 from config import Config
+from file_transfer import FileHandler, TransferService
+from routes import bp
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-
-def allowed_file(filename):
-    # Placeholder: extend to check extensions
-    return True
-
-
-def secure_filename(filename):
-    return os.path.basename(filename)
 
 def create_app():
-    app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
-
+    app = Flask(__name__, template_folder=Path(__file__).parent / 'templates')
     app.config.from_object(Config)
+    app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
+
+    # Initialize services
+    transfer_service = TransferService(Config)
+    file_handler = FileHandler()
 
     # Ensure upload folder exists
-    os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+    Path(Config.UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
 
-    def run_transfer_script(filename):
-        """Run transfer script in background thread"""
-        try:
-            subprocess.run([os.path.join(os.getcwd(), 'scripts/transfer.sh')], check=True)
-            logger.info(f"Transfer script completed for file: {filename}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Transfer script failed for file {filename}: {e}")
+    # In dev mode, also ensure transfer folder exists
+    if Config.DEV_MODE and Config.TRANSFER_FOLDER:
+        Path(Config.TRANSFER_FOLDER).mkdir(parents=True, exist_ok=True)
+        logger.info(f"Running in DEV MODE - transfers will go to: {Config.TRANSFER_FOLDER}")
 
-    @app.route('/ping', methods=['GET'])
-    def ping():
-        return 'ok', 200
+    # Store services on app object for blueprint access
+    app.transfer_service = transfer_service
+    app.file_handler = file_handler
 
-    @app.route('/upload', methods=['GET', 'POST'])
-    def upload():
-        if request.method == 'POST':
-            if 'file' not in request.files:
-                return 'No file selected', 400
-            file = request.files['file']
-            filename = secure_filename(file.filename)
-            if filename == '' or not allowed_file(filename):
-                return 'Invalid file type', 400
-            filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
-            try:
-                file.save(filepath)
-            except Exception as e:
-                logger.error(f"File save failed: {e}")
-                return 'File save failed', 500
-            
-            # Start transfer script in background thread
-            transfer_thread = threading.Thread(target=run_transfer_script, args=(filename,))
-            transfer_thread.daemon = True
-            transfer_thread.start()
-            
-            logger.info(f"File uploaded: {filename} (transfer script running in background)")
-            return redirect(url_for('upload', success=True))
-        
-        success = request.args.get('success')
-        return render_template('upload.html', success=success, device_name=Config.DEVICE_NAME)
+    # Register blueprint
+    app.register_blueprint(bp)
 
-    @app.route('/', methods=['GET'])
-    def index():
-        return render_template('index.html', device_name=Config.DEVICE_NAME)
     return app
 
 
