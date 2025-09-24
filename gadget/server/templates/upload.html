@@ -10,15 +10,32 @@
     <div class="container">
         <h1>{{device_name}}</h1>
 
-        {% if success %}
-        <div class="success">
-            Update complete! USB device reconnecting...
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if transfer_active %}
+        <div class="flash-message info">
+            <strong>Transfer in progress:</strong> "{{ active_transfer }}" is being transferred. Please wait for it to complete before uploading another file.
         </div>
         {% endif %}
 
         <form method="post" enctype="multipart/form-data" id="uploadForm">
-            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-                <label class="upload-label">SELECT DEVICE FILE</label>
+            <div class="upload-area {% if transfer_active %}disabled{% endif %}"
+                 {% if not transfer_active %}onclick="document.getElementById('fileInput').click()"{% endif %}>
+                <label class="upload-label">
+                    {% if transfer_active %}
+                        TRANSFER IN PROGRESS - PLEASE WAIT
+                    {% else %}
+                        SELECT DEVICE FILE
+                    {% endif %}
+                </label>
                 <div class="file-selected" id="fileName" style="display: none;"></div>
             </div>
 
@@ -26,10 +43,15 @@
                    id="fileInput"
                    name="file"
                    accept=".nc,.prg,.txt,.p-1"
+                   {% if transfer_active %}disabled{% endif %}
                    required>
 
-            <button type="submit" id="uploadBtn">
-                UPLOAD & UPDATE
+            <button type="submit" id="uploadBtn" {% if transfer_active %}disabled{% endif %}>
+                {% if transfer_active %}
+                    TRANSFER IN PROGRESS
+                {% else %}
+                    UPLOAD & UPDATE
+                {% endif %}
             </button>
         </form>
     </div>
