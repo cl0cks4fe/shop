@@ -24,9 +24,18 @@ jobs:
           mkdir gadget-server-${{ github.ref_name }}
           cp -r server/* gadget-server-${{ github.ref_name }}
           zip -r gadget-server.zip gadget-server-${{ github.ref_name }}
+      - name: Build extension
+        run: |
+          mkdir -p gadget-extension-${{ github.ref_name }}/{chrome,firefox}
+          cp extension/* gadget-extension-${{ github.ref_name }}/chrome/ 2>/dev/null || true
+          cp extension/* gadget-extension-${{ github.ref_name }}/firefox/ 2>/dev/null || true
+          cp extension/manifests/manifest-chrome.json gadget-extension-${{ github.ref_name }}/chrome/manifest.json
+          cp extension/manifests/manifest-firefox.json gadget-extension-${{ github.ref_name }}/firefox/manifest.json
+          zip -r gadget-extension.zip gadget-extension-${{ github.ref_name }}
       - name: Upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
+            gadget-extension.zip
             gadget/gadget-bootstrap.zip
             gadget/gadget-server.zip

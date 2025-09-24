@@ -1,52 +1,32 @@
-/**
- * CONTENT STYLES - Google Drive Integration Styling
- * 
- * Styles for UI elements injected into Google Drive pages.
- * Designed to integrate cleanly with Google Drive's existing design language.
- */
+/* Google Drive Integration Styles */
 
-/**
- * SEND BUTTON STYLING
- * Blue button that matches Google's design system.
- * Small and unobtrusive to avoid cluttering the Drive interface.
- */
+/* Base send button */
 .drive-send-btn {
-  background: #4285f4;        /* Google Blue */
+  background: #4285f4;
   color: white;
   border: none;
-  padding: 4px 8px;          /* Compact sizing */
-  border-radius: 4px;        /* Rounded corners to match Drive UI */
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;           /* Small text to be unobtrusive */
-  margin-left: 8px;          /* Space from other Drive elements */
-  transition: all 0.3s ease; /* Smooth transitions */
-  min-width: 60px;           /* Wider to fit "Sending" and "Retry" text */
-  text-align: center;        /* Center the text */
+  font-size: 12px;
+  margin-left: 8px;
+  transition: all 0.3s ease;
+  min-width: 60px;
+  text-align: center;
 }
 
-/**
- * SEND BUTTON HOVER STATE
- * Darker blue on hover for visual feedback
- */
 .drive-send-btn:hover {
-  background: #3367d6;       /* Darker Google Blue */
+  background: #3367d6;
 }
 
-/**
- * LOADING STATE
- * Yellow color while upload is in progress with black text for better readability
- */
+/* Button states */
 .drive-send-btn.loading {
-  background: #fbbc04;       /* Google Yellow */
+  background: #fbbc04;
   cursor: wait;
 }
 
-/**
- * SUCCESS STATE
- * Green button with checkmark for successful uploads
- */
 .drive-send-btn.success {
-  background: #34a853;       /* Google Green */
+  background: #34a853;
   cursor: default;
 }
 
@@ -56,13 +36,9 @@
   margin-left: 4px;
 }
 
-/**
- * ERROR STATE
- * Red button with X for failed uploads
- */
 .drive-send-btn.error {
-  background: #ea4335;       /* Google Red */
-  cursor: pointer;           /* Allow retry */
+  background: #ea4335;
+  cursor: pointer;
 }
 
 .drive-send-btn.error::after {
