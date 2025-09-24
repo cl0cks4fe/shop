@@ -94,7 +94,7 @@ class TransferService:
             raise FileNotFoundError(f"Source file not found: {source_file}")
 
     def _hardware_transfer(self, filename):
-        """Production mode transfer - run the hardware script."""
+        """Real transfer - run the script."""
         subprocess.run([str(self.transfer_script)], check=True, timeout=120)
 
     def start_transfer(self, filename):
