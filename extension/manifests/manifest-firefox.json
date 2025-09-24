@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Drive to Server",
+  "version": "1.0",
+  "description": "Send Google Drive files to your server",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "drive-to-server@shop.com"
+    }
+  },
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus"
+  ],
+
+  "host_permissions": [
+    "*://drive.google.com/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Drive to Server Settings"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://drive.google.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http: https:;"
+  }
+}
