@@ -13,6 +13,7 @@ const SELECTORS = {
 const BUTTON_STATES = {
   NORMAL: { state: 'normal', text: 'Send', disabled: false, class: '' },
   LOADING: { state: 'loading', text: 'Sending', disabled: true, class: 'loading' },
+  TRANSFERRING: { state: 'transferring', text: 'Transferring', disabled: true, class: 'loading' },
   SUCCESS: { state: 'success', text: 'Sent', disabled: true, class: 'success' },
   ERROR: { state: 'error', text: 'Retry', disabled: false, class: 'error' }
 };
@@ -20,7 +21,8 @@ const BUTTON_STATES = {
 const TIMEOUTS = {
   SUCCESS_RESET: 3000,
   ERROR_RESET: 5000,
-  MAINTENANCE_CHECK: 2000
+  MAINTENANCE_CHECK: 2000,
+  TRANSFER: 8000,
 };
 
 const MACHINE_READABLE_EXTENSIONS = [
@@ -181,11 +183,16 @@ async function sendFile(fileRow) {
       host,
       port
     }, (response) => {
-      const newState = response?.success ? BUTTON_STATES.SUCCESS : BUTTON_STATES.ERROR;
-      const resetDelay = response?.success ? TIMEOUTS.SUCCESS_RESET : TIMEOUTS.ERROR_RESET;
-
-      setButtonState(button, fileId, newState);
-      setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), resetDelay);
+      if (response?.success) {
+        setButtonState(button, fileId, BUTTON_STATES.TRANSFERRING);
+        setTimeout(() => {
+          setButtonState(button, fileId, BUTTON_STATES.SUCCESS);
+          setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.SUCCESS_RESET);
+        }, TIMEOUTS.TRANSFER);
+      } else {
+        setButtonState(button, fileId, BUTTON_STATES.ERROR);
+        setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
+      }
     });
   } catch (error) {
     setButtonState(button, fileId, BUTTON_STATES.ERROR);
