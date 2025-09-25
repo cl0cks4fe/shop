@@ -1,22 +1,30 @@
 /* Google Drive Integration Styles */
 
-/* Base send button */
+/* Base send button - styled to match Google Drive's action buttons */
 .drive-send-btn {
-  background: #4285f4;
+  background: #1a73e8;
   color: white;
   border: none;
-  padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
-  margin-left: 8px;
-  transition: all 0.3s ease;
-  min-width: 60px;
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 2px;
+  padding: 6px 8px;
+  transition: all 0.2s ease;
+  min-width: 70px;
   text-align: center;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
 
 .drive-send-btn:hover {
-  background: #3367d6;
+  background: #1557b0;
+  box-shadow: 0 1px 3px 0 rgba(60,64,67,.4), 0 4px 8px 3px rgba(60,64,67,.1);
 }
 
 /* Button states */
@@ -39,6 +47,11 @@
 .drive-send-btn.error {
   background: #ea4335;
   cursor: pointer;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .drive-send-btn.error::after {
