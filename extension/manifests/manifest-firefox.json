@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Drive to Server",
+  "name": "Send to Machine",
   "version": "1.0",
-  "description": "Send Google Drive files to your server",
+  "description": "Send Drive files to Machines",
 
   "browser_specific_settings": {
     "gecko": {
@@ -24,7 +24,17 @@
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Drive to Server Settings"
+    "default_title": "Send to Machine Settings",
+    "default_icon": {
+      "16": "icon-16.svg",
+      "48": "icon.svg"
+    }
+  },
+
+  "icons": {
+    "16": "icon-16.svg",
+    "48": "icon.svg",
+    "96": "icon.svg"
   },
 
   "content_scripts": [
