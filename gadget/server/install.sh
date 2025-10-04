@@ -30,7 +30,7 @@ check_privileges() {
         log_error "This script should not be run as root. Use sudo when needed."
         exit 1
     fi
-    
+
     if ! sudo -n true 2>/dev/null; then
         log_error "This script requires sudo privileges."
         exit 1
@@ -40,7 +40,7 @@ check_privileges() {
 # Setup device configuration
 setup_device() {
     log_info "Setting up device configuration"
-    
+
     if [[ ! -f /etc/gadget-device-name ]]; then
         read -p "Enter device name: " -r DEVICE_NAME
         if [[ -z "$DEVICE_NAME" ]]; then
@@ -57,7 +57,7 @@ setup_device() {
 # Stop the service if running
 stop_service() {
     log_info "Stopping $SERVICE_NAME service"
-    
+
     if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
         sudo systemctl stop "$SERVICE_NAME"
         log_info "Service stopped"
@@ -80,63 +80,63 @@ backup_existing() {
 # Install application files
 install_files() {
     log_info "Installing application files to $APP_DIR"
-    
+
     sudo mkdir -p "$APP_DIR"
     sudo cp -r "$SCRIPT_DIR"/* "$APP_DIR"/
     sudo rm -f "$APP_DIR/install.sh"
-    
+
     log_info "Files installed successfully"
 }
 
 # Setup Python virtual environment
 setup_python_env() {
     log_info "Setting up Python virtual environment"
-    
+
     # Remove old virtual environment if it exists
     if [[ -d "$APP_DIR/venv" ]]; then
         sudo rm -rf "$APP_DIR/venv"
     fi
-    
+
     # Create new virtual environment
     sudo python3 -m venv "$APP_DIR/venv"
-    
+
     # Install requirements
     log_info "Installing Python dependencies"
     sudo "$APP_DIR/venv/bin/pip" install --quiet --upgrade pip
     sudo "$APP_DIR/venv/bin/pip" install --quiet -r "$APP_DIR/requirements.txt"
-    
+
     log_info "Python environment configured"
 }
 
 # Configure and start systemd service
 configure_service() {
     log_info "Configuring systemd service"
-    
+
     sudo systemctl daemon-reload
     sudo systemctl enable "$SERVICE_NAME"
     sudo systemctl start "$SERVICE_NAME"
-    
+
     log_info "Service configuration completed"
 }
 
 # Check server health
 check_server_health() {
     log_info "Checking server health at $HEALTH_URL"
-    
+
     local retries=0
     while [[ $retries -lt $HEALTH_RETRIES ]]; do
         # Wait before checking (give server time to start)
         sleep 3
-        
+
         if curl --silent --fail --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then
             log_info "Server health check passed"
             return 0
         fi
-        
+
         retries=$((retries + 1))
         log_info "Health check attempt $retries/$HEALTH_RETRIES failed, retrying..."
     done
-    
+
     log_error "Server health check failed after $HEALTH_RETRIES attempts"
     return 1
 }
@@ -145,21 +145,21 @@ check_server_health() {
 restore_backup() {
     if [[ -n "$BACKUP_DIR" && -d "$BACKUP_DIR" ]]; then
         log_warn "Restoring previous installation from backup"
-        
+
         # Stop the failed service
         sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-        
+
         # Remove failed installation
         if [[ -d "$APP_DIR" ]]; then
             sudo rm -rf "$APP_DIR"
         fi
-        
+
         # Restore backup
         sudo mv "$BACKUP_DIR" "$APP_DIR"
-        
+
         # Restart service with old version
         sudo systemctl start "$SERVICE_NAME"
-        
+
         log_info "Previous installation restored"
     else
         log_warn "No backup available to restore"
@@ -180,7 +180,7 @@ main() {
     log_info "Starting gadget server installation"
     log_info "Source directory: $SCRIPT_DIR"
     log_info "Installation directory: $APP_DIR"
-    
+
     check_privileges
     setup_device
     stop_service
@@ -188,7 +188,7 @@ main() {
     install_files
     setup_python_env
     configure_service
-    
+
     # Test if the server is working correctly
     if check_server_health; then
         log_info "Installation completed successfully"
