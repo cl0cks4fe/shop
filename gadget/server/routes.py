@@ -94,14 +94,15 @@ def upload():
 
 @bp.route('/', methods=['GET'])
 def index():
-    """Home page."""
-    transfer_service, _ = get_services()
-    return render_template(
-        'index.html',
-        device_name=Config.DEVICE_NAME,
-        transfer_active=transfer_service.is_transfer_active(),
-        active_transfer=transfer_service.get_active_transfer()
-    )
+    """Home page - redirect to upload."""
+    return redirect(url_for('main.upload'))
+    # transfer_service, _ = get_services()
+    # return render_template(
+    #     'index.html',
+    #     device_name=Config.DEVICE_NAME,
+    #     transfer_active=transfer_service.is_transfer_active(),
+    #     active_transfer=transfer_service.get_active_transfer()
+    # )
 
 
 @bp.errorhandler(404)
