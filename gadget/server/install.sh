@@ -108,6 +108,42 @@ setup_python_env() {
     log_info "Python environment configured"
 }
 
+# Setup port forwarding from 80 to 3000
+setup_port_forwarding() {
+    log_info "Setting up port forwarding from 80 to 3000"
+
+    # Ensure nftables is installed
+    if ! command -v nft &> /dev/null; then
+        log_info "Installing nftables"
+        sudo apt-get update -qq
+        sudo apt-get install -y nftables
+    fi
+
+    # Enable and start nftables service
+    sudo systemctl enable nftables
+    sudo systemctl start nftables
+
+    # Create nat table if it doesn't exist
+    sudo nft add table ip nat 2>/dev/null || true
+
+    # Create prerouting chain if it doesn't exist
+    sudo nft add chain ip nat prerouting { type nat hook prerouting priority -100 \; } 2>/dev/null || true
+
+    # Check if rule already exists and add it if not
+    if ! sudo nft list chain ip nat prerouting 2>/dev/null | grep -q "tcp dport 80 redirect to :3000"; then
+        sudo nft add rule ip nat prerouting tcp dport 80 redirect to :3000
+        log_info "Port forwarding rule added"
+    else
+        log_info "Port forwarding rule already exists"
+    fi
+
+    # Save the configuration
+    sudo nft list ruleset > /tmp/nftables.conf
+    sudo mv /tmp/nftables.conf /etc/nftables.conf
+
+    log_info "Port forwarding configured - service will be accessible on port 80"
+}
+
 # Configure and start systemd service
 configure_service() {
     log_info "Configuring systemd service"
@@ -188,6 +224,7 @@ main() {
     install_files
     setup_python_env
     configure_service
+    setup_port_forwarding
 
     # Test if the server is working correctly
     if check_server_health; then
