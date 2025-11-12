@@ -23,7 +23,7 @@ const TIMEOUTS = {
   ERROR_RESET: 5000,
   MAINTENANCE_CHECK: 2000,
   POLL_INTERVAL: 2000,
-  TRANSFER_TIMEOUT: 20000,
+  TRANSFER: 20000,
 };
 
 const MACHINE_READABLE_EXTENSIONS = [
@@ -203,7 +203,7 @@ async function sendFile(fileRow) {
           clearInterval(poll);
           setButtonState(button, fileId, BUTTON_STATES.ERROR);
           setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
-        }, TIMEOUTS.TRANSFER_TIMEOUT);
+        }, TIMEOUTS.TRANSFER);
       } else {
         setButtonState(button, fileId, BUTTON_STATES.ERROR);
         setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
