@@ -22,7 +22,8 @@ const TIMEOUTS = {
   SUCCESS_RESET: 3000,
   ERROR_RESET: 5000,
   MAINTENANCE_CHECK: 2000,
-  TRANSFER: 8000,
+  POLL_INTERVAL: 2000,
+  OVERALL_TIMEOUT: 20000,
 };
 
 const MACHINE_READABLE_EXTENSIONS = [
@@ -61,7 +62,7 @@ function maintainButtons() {
 // Watch for DOM changes and maintain buttons
 const observer = new MutationObserver((mutations) => {
   let shouldUpdate = false;
-  
+
   mutations.forEach(mutation => {
     if (mutation.type === 'childList') {
       // Check if buttons were removed or file rows were added/modified
@@ -70,7 +71,7 @@ const observer = new MutationObserver((mutations) => {
           shouldUpdate = true;
         }
       });
-      
+
       mutation.addedNodes.forEach(node => {
         if (node.nodeType === Node.ELEMENT_NODE) {
           if (node.matches && (node.matches(SELECTORS.FILE_ROW) || node.querySelector(SELECTORS.FILE_ROW))) {
@@ -80,7 +81,7 @@ const observer = new MutationObserver((mutations) => {
       });
     }
   });
-  
+
   if (shouldUpdate) {
     setTimeout(maintainButtons, 50);
   }
@@ -185,10 +186,24 @@ async function sendFile(fileRow) {
     }, (response) => {
       if (response?.success) {
         setButtonState(button, fileId, BUTTON_STATES.TRANSFERRING);
+        const poll = setInterval(() => {
+          chrome.runtime.sendMessage({ action: 'checkStatus', host, port }, (r) => {
+            if (r?.status === 'completed') {
+              clearInterval(poll);
+              setButtonState(button, fileId, BUTTON_STATES.SUCCESS);
+              setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.SUCCESS_RESET);
+            } else if (r?.status === 'error') {
+              clearInterval(poll);
+              setButtonState(button, fileId, BUTTON_STATES.ERROR);
+              setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
+            }
+          });
+        }, TIMEOUTS.POLL_INTERVAL);
         setTimeout(() => {
-          setButtonState(button, fileId, BUTTON_STATES.SUCCESS);
-          setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.SUCCESS_RESET);
-        }, TIMEOUTS.TRANSFER);
+          clearInterval(poll);
+          setButtonState(button, fileId, BUTTON_STATES.ERROR);
+          setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);
+        }, TIMEOUTS.OVERALL_TIMEOUT);
       } else {
         setButtonState(button, fileId, BUTTON_STATES.ERROR);
         setTimeout(() => setButtonState(button, fileId, BUTTON_STATES.NORMAL), TIMEOUTS.ERROR_RESET);

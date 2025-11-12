@@ -25,6 +25,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
+  if (request.action === 'checkStatus') {
+    fetch(`http://${request.host}:${request.port}/status`)
+      .then(r => r.json())
+      .then(data => sendResponse({ status: data.transfer_active ? 'transferring' : 'completed' }))
+      .catch(() => sendResponse({ status: 'error' }));
+    return true;
+  }
 });
 
 // Download from Google Drive and upload to server
