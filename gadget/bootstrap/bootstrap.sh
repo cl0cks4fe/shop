@@ -1,13 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-# Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly GADGET_IMAGE="/gadget.img"
 readonly GADGET_SIZE_MB=2048
 readonly SERVICE_NAME="gadget.service"
 
-# Logging functions
 log_info() {
     echo "[INFO] $*"
 }
@@ -20,7 +18,6 @@ log_error() {
     echo "[ERROR] $*" >&2
 }
 
-# Check if running as root or with sudo
 check_privileges() {
     if [[ $EUID -eq 0 ]]; then
         log_error "This script should not be run as root. Use sudo when needed."
@@ -33,7 +30,6 @@ check_privileges() {
     fi
 }
 
-# Check if system is already bootstrapped
 check_bootstrap_status() {
     log_info "Checking bootstrap status"
 
@@ -45,7 +41,6 @@ check_bootstrap_status() {
     log_info "System not bootstrapped, proceeding with setup"
 }
 
-# Determine boot directory
 detect_boot_directory() {
     if [[ -d "/boot/firmware" ]]; then
         echo "/boot/firmware"
@@ -57,7 +52,6 @@ detect_boot_directory() {
     fi
 }
 
-# Configure USB gadget mode
 configure_usb_gadget() {
     local boot_dir
     boot_dir=$(detect_boot_directory)
@@ -65,16 +59,13 @@ configure_usb_gadget() {
     log_info "Configuring USB gadget mode"
     log_info "Using boot directory: $boot_dir"
 
-    # Add dtoverlay to config.txt
     echo "dtoverlay=dwc2" | sudo tee -a "$boot_dir/config.txt" >/dev/null
     log_info "Added dtoverlay=dwc2 to config.txt"
 
-    # Update cmdline.txt
     sudo sed -i 's/$/ modules-load=dwc2,g_mass_storage file=\/gadget.img/' "$boot_dir/cmdline.txt"
     log_info "Updated cmdline.txt with USB gadget parameters"
 }
 
-# Create USB storage image
 create_storage_image() {
     log_info "Creating USB storage image"
 
@@ -94,13 +85,11 @@ create_storage_image() {
     log_info "Formatting image as FAT32"
     sudo mkfs.vfat -F 32 "$GADGET_IMAGE" >/dev/null
 
-    # Set appropriate permissions
     sudo chmod 644 "$GADGET_IMAGE"
 
     log_info "USB storage image created successfully"
 }
 
-# Install systemd services
 install_services() {
     log_info "Installing systemd services"
 
@@ -110,7 +99,6 @@ install_services() {
         exit 1
     fi
 
-    # Copy service files
     for service_file in "${service_files[@]}"; do
         local service_name
         service_name=$(basename "$service_file")
@@ -118,18 +106,15 @@ install_services() {
         log_info "Installed service: $service_name"
     done
 
-    # Reload systemd and enable services
     sudo systemctl daemon-reload
     sudo systemctl enable "$SERVICE_NAME"
 
     log_info "Services installed and enabled"
 }
 
-# Verify installation
 verify_installation() {
     log_info "Verifying installation"
 
-    # Check if gadget image exists and is properly sized
     if [[ ! -f "$GADGET_IMAGE" ]]; then
         log_error "Gadget image not found at $GADGET_IMAGE"
         return 1
@@ -145,7 +130,6 @@ verify_installation() {
         log_info "Gadget image size verified"
     fi
 
-    # Check if service is enabled
     if sudo systemctl is-enabled "$SERVICE_NAME" >/dev/null 2>&1; then
         log_info "Service $SERVICE_NAME is enabled"
     else
@@ -156,7 +140,6 @@ verify_installation() {
     log_info "Installation verification completed"
 }
 
-# Initiate system reboot
 initiate_reboot() {
     log_info "Bootstrap completed successfully"
     log_info "System reboot required to activate USB gadget mode"
@@ -172,7 +155,6 @@ initiate_reboot() {
     sudo reboot
 }
 
-# Main bootstrap function
 main() {
     log_info "Starting system bootstrap"
 
@@ -185,5 +167,4 @@ main() {
     initiate_reboot
 }
 
-# Run main function
 main "$@"
