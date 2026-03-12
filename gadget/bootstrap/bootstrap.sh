@@ -30,6 +30,7 @@ check_privileges() {
     fi
 }
 
+
 check_bootstrap_status() {
     log_info "Checking bootstrap status"
 
