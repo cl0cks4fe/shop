@@ -5,7 +5,7 @@ readonly APP_DIR="/usr/local/bin/gadget/server"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SERVICE_NAME="gadget-server.service"
 
-readonly HEALTH_URL="http://localhost:3000/status"
+readonly HEALTH_URL="http://localhost:3000/api/status"
 readonly HEALTH_TIMEOUT=30
 readonly HEALTH_RETRIES=10
 
@@ -104,8 +104,13 @@ setup_port_forwarding() {
     sudo systemctl enable nftables 2>/dev/null || true
     sudo systemctl start nftables 2>/dev/null || true
 
-    sudo nft add table ip nat
-    sudo nft 'add chain ip nat prerouting { type nat hook prerouting priority 0 ; }'
+    if ! sudo nft list table ip nat 2>/dev/null; then
+        sudo nft add table ip nat
+    fi
+
+    if ! sudo nft list chain ip nat prerouting 2>/dev/null; then
+        sudo nft 'add chain ip nat prerouting { type nat hook prerouting priority 0 ; }'
+    fi
 
     if ! sudo nft list chain ip nat prerouting 2>/dev/null | grep -q "tcp dport 80 redirect to :3000"; then
         sudo nft add rule ip nat prerouting tcp dport 80 redirect to :3000

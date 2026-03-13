@@ -11,42 +11,21 @@ function showMsg(text, cls) {
 form.addEventListener('submit', function(e) {
     e.preventDefault();
     btn.disabled = true;
-    msg.style.display = 'none';
+    showMsg('Transferring... ', 'info');
 
     fetch('api/upload', { method: 'POST', body: new FormData(form) })
         .then(r => r.json().then(data => ({ ok: r.ok, data })))
         .then(({ ok, data }) => {
             if (!ok) {
                 showMsg(data.error || 'Upload failed', 'error');
-                btn.disabled = false;
-                return;
+            } else {
+                showMsg('Transfer complete!', 'success');
             }
-            pollTransferStatus();
         })
         .catch(() => {
             showMsg('Network error', 'error');
+        })
+        .finally(() => {
             btn.disabled = false;
         });
 });
-
-function pollTransferStatus() {
-    showMsg('Transferring... ', 'info');
-    let interval = setInterval(() => {
-        fetch('api/status')
-            .then(r => r.json())
-            .then(status => {
-                if (!status.active_transfer) {
-                    clearInterval(interval);
-                    showMsg('Transfer complete!', 'success');
-                    btn.disabled = false;
-                form.reset()
-                }
-            })
-            .catch(() => {
-                clearInterval(interval);
-                showMsg('Network error during transfer', 'error');
-                btn.disabled = false;
-                form.reset()
-            });
-    }, 1000);
-}
