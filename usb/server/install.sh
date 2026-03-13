@@ -1,10 +1,11 @@
+#!/bin/bash
 set -euo pipefail
 
 readonly APP_DIR="/usr/local/bin/gadget/server"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly SERVICE_NAME="gadget-server"
+readonly SERVICE_NAME="gadget-server.service"
 
-readonly HEALTH_URL="http://localhost:3000/ping"
+readonly HEALTH_URL="http://localhost:3000/status"
 readonly HEALTH_TIMEOUT=30
 readonly HEALTH_RETRIES=10
 
@@ -103,6 +104,9 @@ setup_port_forwarding() {
     sudo systemctl enable nftables 2>/dev/null || true
     sudo systemctl start nftables 2>/dev/null || true
 
+    sudo nft add table ip nat
+    sudo nft 'add chain ip nat prerouting { type nat hook prerouting priority 0 ; }'
+
     if ! sudo nft list chain ip nat prerouting 2>/dev/null | grep -q "tcp dport 80 redirect to :3000"; then
         sudo nft add rule ip nat prerouting tcp dport 80 redirect to :3000
         log_info "Port forwarding rule added"
@@ -111,8 +115,7 @@ setup_port_forwarding() {
         return 0
     fi
 
-    sudo nft list ruleset > /tmp/nftables.conf
-    sudo mv /tmp/nftables.conf /etc/nftables.conf
+    sudo nft list ruleset | sudo tee /etc/nftables.conf >/dev/null
 
     log_info "Port forwarding configured - service will be accessible on port 80"
 }
@@ -120,7 +123,7 @@ setup_port_forwarding() {
 configure_service() {
     log_info "Configuring systemd service"
 
-    local service_file="$SCRIPT_DIR/gadget-server.service"
+    local service_file="$SCRIPT_DIR/$SERVICE_NAME"
     if [[ ! -e "$service_file" ]]; then
         log_error "Service file not found: $service_file"
         exit 1
@@ -195,8 +198,8 @@ main() {
     backup_existing
     install_files
     setup_python_env
-    configure_service
     setup_port_forwarding
+    configure_service
 
     if check_server_health; then
         log_info "Installation completed successfully"
