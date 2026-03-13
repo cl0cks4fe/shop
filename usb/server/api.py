@@ -13,12 +13,9 @@ _lock = threading.Lock()
 log = logging.getLogger(__name__)
 
 DEV_MODE = os.environ.get('DEV', '').lower() in ('1', 'true', 'yes', 'on')
-
 TRANSFER_SCRIPT = Path(__file__).parent / 'scripts' / 'transfer.sh'
 UPLOAD_DIR = Path('upload')
 TRANSFER_DIR = Path('transferred') if DEV_MODE else None
-
-
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 if TRANSFER_DIR: TRANSFER_DIR.mkdir(parents=True, exist_ok=True)
 

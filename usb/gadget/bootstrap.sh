@@ -48,16 +48,19 @@ configure_usb_gadget() {
     log_info "Configuring USB gadget mode"
     log_info "Using boot directory: $boot_dir"
 
-    if grep -q "g_mass_storage" "$boot_dir/cmdline.txt" 2>/dev/null; then
-        log_info "Already complete, skipping..."
-        return 0
+    if sed -n '/^\[all\]/,$p' "$boot_dir/config.txt" | grep -q '^dtoverlay=dwc2'; then
+        log_info "config.txt already configured, skipping..."
+    else
+        echo "dtoverlay=dwc2" | sudo tee -a "$boot_dir/config.txt" >/dev/null
+        log_info "Added dtoverlay=dwc2 to config.txt"
     fi
 
-    echo "dtoverlay=dwc2" | sudo tee -a "$boot_dir/config.txt" >/dev/null
-    log_info "Added dtoverlay=dwc2 to config.txt"
-
-    sudo sed -i 's/$/ modules-load=dwc2,g_mass_storage file=\/gadget.img/' "$boot_dir/cmdline.txt"
-    log_info "Updated cmdline.txt with USB gadget parameters"
+    if grep -q "g_mass_storage" "$boot_dir/cmdline.txt"; then
+        log_info "cmdline.txt already configured, skipping..."
+    else
+        sudo sed -i '1s/$/ modules-load=dwc2,g_mass_storage file=\/gadget.img/' "$boot_dir/cmdline.txt"
+        log_info "Updated cmdline.txt with USB gadget parameters"
+    fi
 }
 
 create_storage_image() {
@@ -74,7 +77,7 @@ create_storage_image() {
     fi
 
     log_info "Creating ${GADGET_SIZE_MB}MB image file at $GADGET_IMAGE"
-    sudo dd if=/dev/zero of="$GADGET_IMAGE" bs=1M count="$GADGET_SIZE_MB" status=progress 2>/dev/null
+    sudo dd if=/dev/zero of="$GADGET_IMAGE" bs=1M count="$GADGET_SIZE_MB" status=progress
 
     log_info "Formatting image as FAT32"
     sudo mkfs.vfat -F 32 "$GADGET_IMAGE" >/dev/null
@@ -86,7 +89,7 @@ create_storage_image() {
 
 install_service() {
     log_info "Installing systemd service"
-    local service_file="$SCRIPT_DIR/gadget.service"
+    local service_file="$SCRIPT_DIR/$SERVICE_NAME"
     if [[ ! -e "$service_file" ]]; then
         log_error "Service file not found: $service_file"
         exit 1
@@ -103,8 +106,9 @@ install_service() {
 
 initiate_reboot() {
     log_info "Bootstrap completed successfully"
-    log_info "Rebooting system in 5 seconds..."
-    sleep 5
+    log_info "Rebooting system in 5 seconds (Ctrl+C to cancel)..."
+    sleep 5 &
+    wait $! 2>/dev/null || { log_warn "Reboot cancelled"; exit 0; }
     sudo reboot
 }
 
@@ -112,7 +116,6 @@ main() {
     log_info "Starting system bootstrap"
 
     check_privileges
-    check_bootstrap_status
     configure_usb_gadget
     create_storage_image
     install_service
