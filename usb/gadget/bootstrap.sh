@@ -122,4 +122,4 @@ main() {
     initiate_reboot
 }
 
-main "$@"[Unit]
+main "$@"
