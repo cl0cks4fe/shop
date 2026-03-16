@@ -60,4 +60,4 @@ def upload():
         return jsonify({'error': 'Transfer failed'}), 500
     finally:
         transfer_state.set_active_transfer(None)
-    return jsonify({'filename': filename}), 200
+    return jsonify({'filename': filename}), 202

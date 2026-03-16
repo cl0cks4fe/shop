@@ -4,10 +4,17 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QHBoxLayout, QTreeView, QVBoxLayout,
     QSplitter, QTabWidget, QLabel, QPushButton, QFileSystemModel, QTextEdit,
-    QHeaderView, QLineEdit, QFormLayout, QGroupBox, QSpacerItem, QSizePolicy
+    QHeaderView, QLineEdit, QFormLayout, QGroupBox,
+    QStyle
 )
 from PySide6.QtCore import Qt, QSettings, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
+
+def _extensions_to_display():
+    return [
+        ".nc", ".gcode", ".tap", ".cnc", ".ngc", ".dxf", ".txt",
+        ".step", ".stp", ".stl", ".svg", ".igs", ".iges", ".dwg",
+    ]
 
 class SettingsTab(QWidget):
     def __init__(self, parent=None):
@@ -51,7 +58,7 @@ class SettingsTab(QWidget):
             self.status.setText("<font color='red'>Offline</font>")
 
 class MainWindow(QMainWindow):
-    ROOT_PATH = Path("/home/cl0ck/projects/example").resolve()
+    ROOT_PATH = Path("~/drive").resolve()
 
     def __init__(self):
         super().__init__()
@@ -64,8 +71,12 @@ class MainWindow(QMainWindow):
         self.file_browser = QTreeView()
         self.path_label = QLabel(f"{self.ROOT_PATH.name}")
         self.viewer_text = QTextEdit(readOnly=True)
-        self.up_btn = QPushButton("⟵", fixedWidth=48, clicked=self.navigate_up)
-        self.up_btn.setStyleSheet("font-weight: bold")
+        self.up_btn = QPushButton()
+        self.up_btn.setIcon(self.style().standardIcon(QStyle.SP_ArrowBack))
+        self.up_btn.setFixedWidth(48)
+        self.up_btn.setToolTip("Go up one folder")
+        self.up_btn.clicked.connect(self.navigate_up)
+        self.up_btn.setStyleSheet("border-radius: 8px; background-color: #fff; border: 2px solid #888; font-size: 16px; padding: 4px;")
         self.up_btn.setEnabled(False)
         self.viewer_title = QLabel()
         
@@ -131,7 +142,8 @@ class MainWindow(QMainWindow):
         file_name = Path(file_path).name
 
         self.send_btn.setText(f"Sending {file_name}...")
-        self.send_btn.setEnabled(False) 
+        self.send_btn.setEnabled(False)
+        self.send_btn.repaint() 
         QApplication.processEvents()
 
         try:
@@ -149,7 +161,7 @@ class MainWindow(QMainWindow):
             self.send_btn.setText("Connection Failed")
             self.send_btn.setStyleSheet("background-color: red; color: white; font-weight: bold; font-size: 18px;")
         
-        QTimer.singleShot(2000, self.reset_send_button)
+        QTimer.singleShot(10000, self.reset_send_button)
 
     def update_path_label(self):
         cur_root = Path(self.model.filePath(self.file_browser.rootIndex()))
@@ -166,11 +178,15 @@ class MainWindow(QMainWindow):
 
     def on_file_selected(self, index):
         path = Path(self.model.filePath(index))
-        if path.is_file():
+        if path.is_file() and path.suffix in _extensions_to_display():
             content = path.read_text(encoding='utf-8', errors='replace')
             self.viewer_title.setText(f"<b>{path.name}</b>")
             self.viewer_text.setPlainText(content)
             self.tabs.setCurrentIndex(0)
+        else:
+            self.viewer_title.setText("")
+            self.viewer_text.setPlainText("")
+
 
     def on_directory_double_clicked(self, index):
         if self.model.isDir(index):
