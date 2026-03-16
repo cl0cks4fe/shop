@@ -18,8 +18,16 @@ jobs:
           mkdir usb-${{ github.ref_name }}
           cp -r usb/* usb-${{ github.ref_name }}
           zip -r usb.zip usb-${{ github.ref_name }}
+      - name: Build console executable
+        run: |
+          cd console
+          make build
+          cd dist
+          mv console console-${{ github.ref_name }}
+          zip console.zip console-${{ github.ref_name }}
       - name: Upload assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
             usb/usb.zip
+            console/dist/console.zip
