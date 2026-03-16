@@ -2,7 +2,6 @@
 Description=Gadget
 After=systemd-udevd.service
 Wants=systemd-udevd.service
-ConditionPathExists=/gadget.img
 
 [Service]
 Type=oneshot
