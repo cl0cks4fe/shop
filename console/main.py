@@ -21,29 +21,74 @@ class NetworkWorker(QThread):
             self.finished.emit(False)
 
 class SettingsTab(QWidget):
+    path_changed = Signal(str)
+
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        layout = QFormLayout(self)
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
         self.url = QLineEdit(self.settings.value("upload_url", "localhost:3000"))
-        self.status = QLabel()
+        self.url.setFocusPolicy(Qt.ClickFocus)
+        
+        url_row = QHBoxLayout()
+        url_row.addWidget(self.url)
+        self.test_btn = QPushButton("Test Connection", clicked=self.test_upload_url)
+        url_row.addWidget(self.test_btn)
+        
+        self.form_layout.addRow("Gadget URL:", url_row)
 
-        btn_box = QHBoxLayout()
-        for txt, cmd in [("Save", self.save), ("Test", self.test)]:
-            btn_box.addWidget(QPushButton(txt, clicked=cmd))
-        btn_box.addStretch()
-        btn_box.addWidget(self.status)
+        self.root_path = QLineEdit(self.settings.value("root_path", "~/"))
+        self.root_path.setFocusPolicy(Qt.ClickFocus)
+        path_row = QHBoxLayout()
+        path_row.addWidget(self.root_path)
+        path_row.addWidget(QPushButton("Browse...", clicked=self.browse_path))
+        
+        self.form_layout.addRow("Root Path:", path_row)
+        
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addStretch()
 
-        layout.addRow("Gadget URL:", self.url)
-        layout.addRow(btn_box)
+        self.footer = QHBoxLayout()
+        self.save_status = QLabel("")
+        
+        self.cancel_btn = QPushButton("Discard", clicked=self.revert_settings)
+        self.save_btn = QPushButton("Apply", clicked=self.save_all)
 
-    def save(self):
+        self.footer.addWidget(self.save_status)
+        self.footer.addStretch()
+        self.footer.addWidget(self.cancel_btn)
+        self.footer.addWidget(self.save_btn)
+        
+        self.main_layout.addLayout(self.footer)
+
+
+    def browse_path(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Root Directory", self.root_path.text())
+        if directory:
+            self.root_path.setText(directory)
+
+    def save_all(self):
+        new_path = self.root_path.text()
         self.settings.setValue("upload_url", self.url.text())
-        self.status.setText("<font color='green'><b>✓ Saved</b></font>")
+        self.settings.setValue("root_path", new_path)
+        self.settings.sync()
+        
+        self.path_changed.emit(new_path)
+        
+        self.save_status.setText("Settings Applied")
+        QTimer.singleShot(3000, lambda: self.save_status.setText(""))
 
-    def test(self):
-        self.status.setText("Connecting...")
-        self.status.setStyleSheet("color: white;")
+    def revert_settings(self):
+        self.url.setText(self.settings.value("upload_url", "localhost:3000"))
+        self.root_path.setText(self.settings.value("root_path", "~/"))
+        self.save_status.setText("Changes Discarded")
+        QTimer.singleShot(2000, lambda: self.save_status.setText(""))
+
+    def test_upload_url(self):
+        self.test_btn.setEnabled(False)
+        self.test_btn.setText("Connecting...")
         
         self.worker = NetworkWorker(self.url.text())
         self.worker.finished.connect(self.on_test_finished)
@@ -51,9 +96,18 @@ class SettingsTab(QWidget):
 
     def on_test_finished(self, success):
         if success:
-            self.status.setText("<font color='green'>Connected</font>")
+            self.test_btn.setText("Online")
+            self.test_btn.setStyleSheet("background-color: green; color: white;")
         else:
-            self.status.setText("<font color='red'>Offline</font>")
+            self.test_btn.setText("Offline")
+            self.test_btn.setStyleSheet("background-color: red; color: white;")
+            
+        QTimer.singleShot(5000, self.reset_test_button)
+
+    def reset_test_button(self):
+        self.test_btn.setEnabled(True)
+        self.test_btn.setText("Test Connection")
+        self.test_btn.setStyleSheet("")
 
 class NotesTab(QTextEdit):
     """A large text area that auto-saves to settings."""
@@ -70,11 +124,10 @@ class NotesTab(QTextEdit):
         self.settings.setValue("user_notes", self.toPlainText())
         
 class MainWindow(QMainWindow):
-    ROOT = pathlib.Path("~/drive").expanduser().resolve()
-
     def __init__(self):
         super().__init__()
         self.settings = QSettings("console", "Settings")
+        self.ROOT = pathlib.Path(self.settings.value("root_path", "~")).expanduser().resolve()
         self.model = QFileSystemModel()
         self.model.setRootPath(str(self.ROOT))
 
@@ -105,11 +158,14 @@ class MainWindow(QMainWindow):
         left = QVBoxLayout()
         left.addLayout(nav); left.addWidget(self.browser); left.addWidget(self.send_btn)
 
+        self.settings_tab = SettingsTab(self.settings)
+        self.settings_tab.path_changed.connect(self.update_root_directory)
+
         self.tabs = QTabWidget()
 
         self.tabs.addTab(self.viewer, "File Viewer")
         self.tabs.addTab(NotesTab(self.settings), "Notes")
-        self.tabs.addTab(SettingsTab(self.settings), "Settings")
+        self.tabs.addTab(self.settings_tab, "Settings")
 
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel) 
@@ -160,6 +216,15 @@ class MainWindow(QMainWindow):
             self.send_btn.setText("Failed"); self.send_btn.setStyleSheet("background: red; color: white;")
         
         QTimer.singleShot(5000, lambda: (self.send_btn.setEnabled(True), self.send_btn.setText("Send File"), self.send_btn.setStyleSheet("")))
+
+    def update_root_directory(self, new_path_str):
+        self.ROOT = pathlib.Path(new_path_str).expanduser().resolve()
+        
+        self.model.setRootPath(str(self.ROOT))
+        self.browser.setRootIndex(self.model.index(str(self.ROOT)))
+
+        self.update_nav()
+        self.path_lbl.setText(self.ROOT.name)
 
 if __name__ == "__main__":
     app = QApplication([])
