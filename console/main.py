@@ -3,7 +3,7 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import Qt, QSettings, QTimer, QThread, Signal
 from PySide6.QtGui import QShortcut, QKeySequence
 
-EXTS = {".nc", ".gcode", ".tap", ".cnc", ".ngc", ".dxf", ".txt", ".step", ".stp", ".stl", ".svg", ".igs", ".iges", ".dwg"}
+EXTS = {".nc", ".gcode", ".tap", ".cnc", ".ngc", ".dxf", ".txt", ".step", ".stp", ".stl", ".svg", ".igs", ".iges", ".dwg", ".docx"}
 
 
 class NetworkWorker(QThread):
@@ -122,7 +122,27 @@ class NotesTab(QTextEdit):
 
     def save_notes(self):
         self.settings.setValue("user_notes", self.toPlainText())
-        
+
+class UploadWorker(QThread):
+    finished = Signal(bool, str)
+
+    def __init__(self, url, file_path):
+        super().__init__()
+        self.url = url
+        self.file_path = file_path
+
+    def run(self):
+        try:
+            with open(self.file_path, 'rb') as f:
+                r = requests.post(f'http://{self.url}/api/upload', files={'file': f})
+            
+            if r.status_code == 202:
+                self.finished.emit(True, "Success")
+            else:
+                self.finished.emit(False, f"Error: {r.status_code}")
+        except Exception as e:
+            self.finished.emit(False, "Failed")
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -201,21 +221,28 @@ class MainWindow(QMainWindow):
     def send_file(self):
         idx = self.browser.currentIndex()
         path = pathlib.Path(self.model.filePath(idx))
-        if not(path.is_file() and path.suffix in EXTS): return
+        if not (path.is_file() and path.suffix in EXTS): 
+            return
         
         url = self.settings.value("upload_url", "")
-        self.send_btn.setEnabled(False)
-
-        try:
-            with open(path, 'rb') as f:
-                r = requests.post(f'http://{url}/api/upload', files={'file': f}, timeout=10)
-            success = r.status_code == 202
-            self.send_btn.setText("✓ Success" if success else f"Error: {r.status_code}")
-            self.send_btn.setStyleSheet(f"background: {'green' if success else 'red'}; color: white;")
-        except:
-            self.send_btn.setText("Failed"); self.send_btn.setStyleSheet("background: red; color: white;")
         
-        QTimer.singleShot(5000, lambda: (self.send_btn.setEnabled(True), self.send_btn.setText("Send File"), self.send_btn.setStyleSheet("")))
+        self.send_btn.setEnabled(False)
+        self.send_btn.setText("Sending...")
+
+        self.uploader = UploadWorker(url, path)
+        self.uploader.finished.connect(self.on_upload_finished)
+        self.uploader.start()
+
+    def on_upload_finished(self, success, message):
+        self.send_btn.setText(message)
+        self.send_btn.setStyleSheet(f"background: {'green' if success else 'red'}; color: white;")
+        
+        QTimer.singleShot(5000, self.reset_send_button)
+
+    def reset_send_button(self):
+        self.send_btn.setEnabled(True)
+        self.send_btn.setText("Send File")
+        self.send_btn.setStyleSheet("")
 
     def update_root_directory(self, new_path_str):
         self.ROOT = pathlib.Path(new_path_str).expanduser().resolve()
