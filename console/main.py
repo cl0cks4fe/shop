@@ -1,12 +1,11 @@
-import sys, requests, pathlib
+import requests, pathlib
 from PySide6.QtWidgets import *
-from PySide6.QtCore import Qt, QSettings, QTimer, QThread, Signal
+from PySide6.QtCore import Qt, QSettings, QTimer, QThread, Signal, QDateTime
 from PySide6.QtGui import QShortcut, QKeySequence
 
-EXTS = {".nc", ".gcode", ".tap", ".cnc", ".ngc", ".dxf", ".txt", ".step", ".stp", ".stl", ".svg", ".igs", ".iges", ".dwg", ".docx"}
+EXTS = {".nc", ".gcode", ".tap", ".cnc", ".ngc", ".dxf", ".txt", ".step", ".stp", ".stl", ".svg", ".igs", ".iges", ".dwg"}
 
-
-class NetworkWorker(QThread):
+class PingWorker(QThread):
     finished = Signal(bool)
 
     def __init__(self, url):
@@ -20,6 +19,26 @@ class NetworkWorker(QThread):
         except Exception:
             self.finished.emit(False)
 
+class UploadWorker(QThread):
+    finished = Signal(bool, str)
+
+    def __init__(self, url, file_path):
+        super().__init__()
+        self.url = url
+        self.file_path = file_path
+
+    def run(self):
+        try:
+            with open(self.file_path, 'rb') as f:
+                r = requests.post(f'http://{self.url}/api/upload', files={'file': f})
+            
+            if r.status_code == 202:
+                self.finished.emit(True, "Success")
+            else:
+                self.finished.emit(False, f"Error: {r.status_code}")
+        except Exception:
+            self.finished.emit(False, "Failed")
+
 class SettingsTab(QWidget):
     path_changed = Signal(str)
 
@@ -29,30 +48,38 @@ class SettingsTab(QWidget):
         self.main_layout = QVBoxLayout(self)
         self.form_layout = QFormLayout()
 
+        # upload url
+
         self.url = QLineEdit(self.settings.value("upload_url", "localhost:3000"))
         self.url.setFocusPolicy(Qt.ClickFocus)
         
         url_row = QHBoxLayout()
         url_row.addWidget(self.url)
+        
         self.test_btn = QPushButton("Test Connection", clicked=self.test_upload_url)
         url_row.addWidget(self.test_btn)
-        
+
         self.form_layout.addRow("Gadget URL:", url_row)
+
+        # root path
 
         self.root_path = QLineEdit(self.settings.value("root_path", "~/"))
         self.root_path.setFocusPolicy(Qt.ClickFocus)
+
         path_row = QHBoxLayout()
         path_row.addWidget(self.root_path)
         path_row.addWidget(QPushButton("Browse...", clicked=self.browse_path))
-        
+
         self.form_layout.addRow("Root Path:", path_row)
-        
+
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addStretch()
 
+        # footer
+
         self.footer = QHBoxLayout()
         self.save_status = QLabel("")
-        
+
         self.cancel_btn = QPushButton("Discard", clicked=self.revert_settings)
         self.save_btn = QPushButton("Apply", clicked=self.save_all)
 
@@ -62,7 +89,6 @@ class SettingsTab(QWidget):
         self.footer.addWidget(self.save_btn)
         
         self.main_layout.addLayout(self.footer)
-
 
     def browse_path(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Root Directory", self.root_path.text())
@@ -90,7 +116,7 @@ class SettingsTab(QWidget):
         self.test_btn.setEnabled(False)
         self.test_btn.setText("Connecting...")
         
-        self.worker = NetworkWorker(self.url.text())
+        self.worker = PingWorker(self.url.text())
         self.worker.finished.connect(self.on_test_finished)
         self.worker.start()
 
@@ -109,45 +135,37 @@ class SettingsTab(QWidget):
         self.test_btn.setText("Test Connection")
         self.test_btn.setStyleSheet("")
 
+class LogsTab(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        self.log_viewer = QPlainTextEdit()
+        self.log_viewer.setReadOnly(True)
+        self.log_viewer.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; font-family: monospace; font-size: 10pt;")
+        layout.addWidget(self.log_viewer)
+
+    def add_log(self, message):
+        timestamp = QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss")
+        self.log_viewer.appendPlainText(f"[{timestamp}] {message}")
+
 class NotesTab(QTextEdit):
-    """A large text area that auto-saves to settings."""
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
         
-        saved_notes = self.settings.value("user_notes", "")
+        saved_notes = self.settings.value("notes", "")
         self.setPlainText(saved_notes)
         
         self.textChanged.connect(self.save_notes)
 
     def save_notes(self):
-        self.settings.setValue("user_notes", self.toPlainText())
-
-class UploadWorker(QThread):
-    finished = Signal(bool, str)
-
-    def __init__(self, url, file_path):
-        super().__init__()
-        self.url = url
-        self.file_path = file_path
-
-    def run(self):
-        try:
-            with open(self.file_path, 'rb') as f:
-                r = requests.post(f'http://{self.url}/api/upload', files={'file': f})
-            
-            if r.status_code == 202:
-                self.finished.emit(True, "Success")
-            else:
-                self.finished.emit(False, f"Error: {r.status_code}")
-        except Exception as e:
-            self.finished.emit(False, "Failed")
+        self.settings.setValue("notes", self.toPlainText())
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.settings = QSettings("console", "Settings")
-        self.ROOT = pathlib.Path(self.settings.value("root_path", "~")).expanduser().resolve()
+        self.ROOT = pathlib.Path(self.settings.value("root_path", "~/")).expanduser().resolve()
         self.model = QFileSystemModel()
         self.model.setRootPath(str(self.ROOT))
 
@@ -176,16 +194,21 @@ class MainWindow(QMainWindow):
         nav.addWidget(self.path_lbl, 1)
 
         left = QVBoxLayout()
-        left.addLayout(nav); left.addWidget(self.browser); left.addWidget(self.send_btn)
+        left.addLayout(nav)
+        left.addWidget(self.browser)
+        left.addWidget(self.send_btn)
 
         self.settings_tab = SettingsTab(self.settings)
         self.settings_tab.path_changed.connect(self.update_root_directory)
+
+        self.logs_tab = LogsTab()
 
         self.tabs = QTabWidget()
 
         self.tabs.addTab(self.viewer, "File Viewer")
         self.tabs.addTab(NotesTab(self.settings), "Notes")
         self.tabs.addTab(self.settings_tab, "Settings")
+        self.tabs.addTab(self.logs_tab, "Logs")
 
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel) 
@@ -193,10 +216,12 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.tabs)
 
         split = QSplitter(Qt.Horizontal)
-        w1, w2 = QWidget(), QWidget()
-        w1.setLayout(left); split.addWidget(w1); split.addWidget(right_panel)
+        w1 = QWidget()
+        w1.setLayout(left)
+        split.addWidget(w1)
+        split.addWidget(right_panel)
         self.setCentralWidget(split)
-        self.setStyleSheet("font-size: 14pt; QPushButton { font-weight: bold; }")
+        self.setStyleSheet("font-size: 14pt;")
 
     def preview(self, idx):
         p = pathlib.Path(self.model.filePath(idx))
@@ -210,8 +235,11 @@ class MainWindow(QMainWindow):
             self.update_nav()
 
     def go_up(self):
-        self.browser.setRootIndex(self.browser.rootIndex().parent())
-        self.update_nav()
+       parent = self.browser.rootIndex().parent()
+       parent_path = pathlib.Path(self.model.filePath(parent))
+       if parent_path >= self.ROOT:
+           self.browser.setRootIndex(parent)
+           self.update_nav()
 
     def update_nav(self):
         curr = pathlib.Path(self.model.filePath(self.browser.rootIndex()))
@@ -221,7 +249,9 @@ class MainWindow(QMainWindow):
     def send_file(self):
         idx = self.browser.currentIndex()
         path = pathlib.Path(self.model.filePath(idx))
-        if not (path.is_file() and path.suffix in EXTS): 
+        if not (path.is_file() and path.suffix in EXTS):
+            self.send_btn.setText("No file selected")
+            QTimer.singleShot(5000, self.reset_send_button)
             return
         
         url = self.settings.value("upload_url", "")
@@ -229,11 +259,17 @@ class MainWindow(QMainWindow):
         self.send_btn.setEnabled(False)
         self.send_btn.setText("Sending...")
 
-        self.uploader = UploadWorker(url, path)
-        self.uploader.finished.connect(self.on_upload_finished)
-        self.uploader.start()
+        self.worker = UploadWorker(url, path)
+        self.worker.finished.connect(self.on_upload_finished)
+        self.worker.start()
 
     def on_upload_finished(self, success, message):
+        filename = pathlib.Path(self.worker.file_path).name
+        if success:
+            self.logs_tab.add_log(f"Upload succeeded: {filename}")
+        else:
+            self.logs_tab.add_log(f"Upload failed: {filename} — {message}")
+
         self.send_btn.setText(message)
         self.send_btn.setStyleSheet(f"background: {'green' if success else 'red'}; color: white;")
         
@@ -244,14 +280,14 @@ class MainWindow(QMainWindow):
         self.send_btn.setText("Send File")
         self.send_btn.setStyleSheet("")
 
-    def update_root_directory(self, new_path_str):
-        self.ROOT = pathlib.Path(new_path_str).expanduser().resolve()
+    def update_root_directory(self, path_str):
+        self.ROOT = pathlib.Path(path_str).expanduser().resolve()
         
         self.model.setRootPath(str(self.ROOT))
         self.browser.setRootIndex(self.model.index(str(self.ROOT)))
 
         self.update_nav()
-        self.path_lbl.setText(self.ROOT.name)
+
 
 if __name__ == "__main__":
     app = QApplication([])
