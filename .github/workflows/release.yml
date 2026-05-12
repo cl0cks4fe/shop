@@ -16,7 +16,7 @@ jobs:
         run: |
           cd usb
           mkdir usb-${{ github.ref_name }}
-          cp -r usb/* usb-${{ github.ref_name }}
+          cp -r gadget server usb-${{ github.ref_name }}
           zip -r usb.zip usb-${{ github.ref_name }}
       - name: Build console executable
         run: |
