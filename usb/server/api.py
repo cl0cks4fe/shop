@@ -29,6 +29,10 @@ def status():
         'active_transfer': transfer_state.get_active_transfer()
     })
 
+@api_bp.route('/ping')
+def ping():
+    return '', 200
+
 @api_bp.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
