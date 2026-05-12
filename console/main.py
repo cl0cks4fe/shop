@@ -15,7 +15,7 @@ def reset_button(btn, text, ms=5000):
     QTimer.singleShot(ms, lambda: (btn.setEnabled(True), btn.setText(text), btn.setStyleSheet("")))
 
 
-class PingWorker(QThread):
+class StatusWorker(QThread):
     finished = Signal(bool)
 
     def __init__(self, url):
@@ -24,7 +24,7 @@ class PingWorker(QThread):
 
     def run(self):
         try:
-            ok = requests.get(f'http://{self.url}/ping', timeout=1).status_code == 200
+            ok = requests.get(f'http://{self.url}/api/status', timeout=1).status_code == 200
         except Exception:
             ok = False
         self.finished.emit(ok)
@@ -105,7 +105,7 @@ class SettingsTab(QWidget):
     def test_upload_url(self):
         self.test_btn.setEnabled(False)
         self.test_btn.setText("Connecting...")
-        self.worker = PingWorker(self.url.text())
+        self.worker = StatusWorker(self.url.text())
         self.worker.finished.connect(self.on_test_finished)
         self.worker.start()
 
