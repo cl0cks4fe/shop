@@ -1,11 +1,12 @@
 #!/bin/bash
 sudo modprobe -r g_mass_storage
 
-sleep 5
+while lsmod | grep -q "^g_mass_storage"; do
+    sleep 0.2
+done
 
 sudo mount /gadget.img /mnt -o loop
 
-sudo rm -rf /mnt/*
 sudo cp /usr/local/bin/gadget/server/upload/* /mnt/
 sudo rm -f /usr/local/bin/gadget/server/upload/*
 

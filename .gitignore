@@ -6,3 +6,10 @@ zip.sh
 __pycache__
 upload
 transferred
+[PyInstaller]
+console/build/
+console/dist/
+console/*.spec
+server/build/
+server/dist/
+server/*.spec
