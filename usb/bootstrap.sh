@@ -1,10 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly GADGET_IMAGE="/gadget.img"
-readonly GADGET_SIZE_MB=2048
-readonly SERVICE_NAME="gadget.service"
+readonly CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly GADGET_IMAGE="/usb.img"
+readonly GADGET_SIZE_MB=4096
+readonly SERVICE="usb.service"
+readonly USB_SCRIPT_DEST="/usr/local/bin/usb.sh"
 
 log_info() {
     echo "[INFO] $*"
@@ -19,11 +20,6 @@ log_error() {
 }
 
 check_privileges() {
-    if [[ $EUID -eq 0 ]]; then
-        log_error "This script should not be run as root. Use sudo when needed."
-        exit 1
-    fi
-
     if ! sudo -n true 2>/dev/null; then
         log_error "This script requires sudo privileges."
         exit 1
@@ -54,13 +50,6 @@ configure_usb_gadget() {
         echo "dtoverlay=dwc2" | sudo tee -a "$boot_dir/config.txt" >/dev/null
         log_info "Added dtoverlay=dwc2 to config.txt"
     fi
-
-    if grep -q "g_mass_storage" "$boot_dir/cmdline.txt"; then
-        log_info "cmdline.txt already configured, skipping..."
-    else
-        sudo sed -i '1s/$/ modules-load=dwc2,g_mass_storage file=\/gadget.img/' "$boot_dir/cmdline.txt"
-        log_info "Updated cmdline.txt with USB gadget parameters"
-    fi
 }
 
 create_storage_image() {
@@ -77,7 +66,7 @@ create_storage_image() {
     fi
 
     log_info "Creating ${GADGET_SIZE_MB}MB image file at $GADGET_IMAGE"
-    sudo dd if=/dev/zero of="$GADGET_IMAGE" bs=1M count="$GADGET_SIZE_MB" status=progress
+    sudo fallocate -l "${GADGET_SIZE_MB}M" "$GADGET_IMAGE"
 
     log_info "Formatting image as FAT32"
     sudo mkfs.vfat -F 32 "$GADGET_IMAGE" >/dev/null
@@ -87,9 +76,33 @@ create_storage_image() {
     log_info "USB storage image created successfully"
 }
 
+install_rclone() {
+    if command -v rclone &>/dev/null; then
+        log_info "rclone already installed: $(rclone --version | head -1)"
+        return 0
+    fi
+
+    log_info "Installing rclone"
+    sudo apt-get install -y rclone
+    log_info "rclone installed: $(rclone --version | head -1)"
+}
+
+install_usb_script() {
+    log_info "Installing usb.sh"
+    local script_file="$CUR_DIR/usb.sh"
+    if [[ ! -e "$script_file" ]]; then
+        log_error "usb.sh not found: $script_file"
+        exit 1
+    fi
+
+    sudo cp "$script_file" "$USB_SCRIPT_DEST"
+    sudo chmod +x "$USB_SCRIPT_DEST"
+    log_info "Installed usb.sh to $USB_SCRIPT_DEST"
+}
+
 install_service() {
     log_info "Installing systemd service"
-    local service_file="$SCRIPT_DIR/$SERVICE_NAME"
+    local service_file="$CUR_DIR/$SERVICE"
     if [[ ! -e "$service_file" ]]; then
         log_error "Service file not found: $service_file"
         exit 1
@@ -99,17 +112,13 @@ install_service() {
     log_info "Installed service: $(basename "$service_file")"
 
     sudo systemctl daemon-reload
-    sudo systemctl enable "$SERVICE_NAME"
+    sudo systemctl enable "$SERVICE"
 
     log_info "Service installed and enabled"
 }
 
-initiate_reboot() {
-    log_info "Bootstrap completed successfully"
-    log_info "Rebooting system in 5 seconds (Ctrl+C to cancel)..."
-    sleep 5 &
-    wait $! 2>/dev/null || { log_warn "Reboot cancelled"; exit 0; }
-    sudo reboot
+configure_rclone() {
+    sudo rclone config
 }
 
 main() {
@@ -118,8 +127,10 @@ main() {
     check_privileges
     configure_usb_gadget
     create_storage_image
+    install_rclone
+    configure_rclone
+    install_usb_script
     install_service
-    initiate_reboot
 }
 
 main "$@"

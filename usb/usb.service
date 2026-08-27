@@ -1,0 +1,14 @@
+[Unit]
+Description=USB
+After=network-online.target local-fs.target systemd-udev-settle.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/sbin/modprobe loop
+ExecStartPre=-/sbin/modprobe -r g_mass_storage
+ExecStart=/usr/local/bin/usb.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
